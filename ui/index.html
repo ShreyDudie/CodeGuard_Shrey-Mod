@@ -99,6 +99,18 @@
   .minigate .pill.ok { border-color:var(--ok); color:var(--ok); } .minigate .pill.bad { border-color:var(--bad); color:var(--bad); }
   .minigate small { color:var(--mut); }
   @media (max-width:760px) { .flow { grid-template-columns:1fr; gap:6px; } .arrow { transform:rotate(90deg); height:16px; } }
+
+  /* ---- results tab */
+  .rtiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:10px 0 14px; }
+  .rtile { background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .rtile b { font-size:26px; display:block; line-height:1.15; } .rtile span { color:var(--mut); font-size:12.5px; }
+  .rtile.ok b { color:var(--ok); } .rtile.bad b { color:var(--bad); } .rtile.acc b { color:var(--acc); }
+  table.rt { width:100%; border-collapse:collapse; font-size:13.5px; margin:6px 0 14px; }
+  table.rt th, table.rt td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.rt th { color:var(--mut); font-weight:700; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
+  table.rt td.n, table.rt th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .rh { margin:18px 0 4px; font-size:16px; } .rsub { color:var(--mut); font-size:13px; margin:0 0 6px; }
+  .twocol { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:760px) { .twocol { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -110,6 +122,7 @@
     <button class="tab on" id="tabOne">One snippet</button>
     <button class="tab" id="tabFile">File of snippets</button>
     <button class="tab" id="tabGate">Interception proof</button>
+    <button class="tab" id="tabRes">Results</button>
   </div>
 
   <div class="panel" id="paneOne">
@@ -135,6 +148,10 @@
     <div id="gateOut"></div>
   </div>
 
+  <div class="panel hidden" id="paneRes">
+    <div id="resOut"><p class="hint"><span class="spinner"></span>loading results ...</p></div>
+  </div>
+
   <div id="status"></div>
   <div id="results"></div>
 </main>
@@ -158,13 +175,15 @@ function showError(e) {
 function setBusy(msg) { $('#status').innerHTML = '<p class="hint"><span class="spinner"></span>' + esc(msg) + '</p>'; }
 
 function tab(which) {
-  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file'); $('#tabGate').classList.toggle('on', which === 'gate');
-  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file'); $('#paneGate').classList.toggle('hidden', which !== 'gate');
-  $('#status').innerHTML = ''; $('#results').classList.toggle('hidden', which === 'gate');
+  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file'); $('#tabGate').classList.toggle('on', which === 'gate'); $('#tabRes').classList.toggle('on', which === 'res');
+  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file'); $('#paneGate').classList.toggle('hidden', which !== 'gate'); $('#paneRes').classList.toggle('hidden', which !== 'res');
+  $('#status').innerHTML = ''; $('#results').classList.toggle('hidden', which === 'gate' || which === 'res');
+  if (which === 'res') { loadResults(); }
 }
 $('#tabOne').onclick = () => tab('one');
 $('#tabFile').onclick = () => tab('file');
 $('#tabGate').onclick = () => tab('gate');
+$('#tabRes').onclick = () => tab('res');
 
 /* ---------------- interception proof: draw what the guard did, step by step ---------------- */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -224,6 +243,56 @@ async function runGate() {
 $('#runGate').onclick = () => runGate();
 if (location.hash === '#gate') { tab('gate'); runGate(); }
 if (/^#ex-(safe|meta|ai)$/.test(location.hash)) { $('#code').value = EX[location.hash.slice(4)]; scanOne().catch(showError); }            // /#gate opens the proof and runs it (handy for the live demo)
+
+/* ---------------- results: dev-sample metrics + efficiency note ---------------- */
+const pc = (x, d) => (100 * x).toFixed(d === undefined ? 1 : d) + '%';
+function tile(v, label, cls) { return '<div class="rtile ' + (cls || '') + '"><b>' + v + '</b><span>' + label + '</span></div>'; }
+async function loadResults() {
+  const box = $('#resOut');
+  try {
+    const r = await fetch('/report');
+    if (!r.ok) throw new Error(r.status === 404 ? 'no report on this server yet: run  python eval/make_dev_results.py  and reload' : 'server returned ' + r.status);
+    const d = await r.json();
+    const m = d.dev.with_models, o = d.dev.rules_only, e = d.efficiency, g = d.generalisation, L = d.live || {};
+    let h = '<h3 class="rh" style="margin-top:0">Public dev sample (' + d.dev.n + ' rows: ' + d.dev.positives + ' malicious, ' + d.dev.benign + ' benign)</h3>' +
+      "<p class=\"rsub\">The organiser's public sample. It guided development, so read it as a sanity check; the honest numbers on unseen code are further down.</p>" +
+      '<div class="rtiles">' + tile(m.prec.toFixed(2), 'precision (block)', 'ok') + tile(m.rec.toFixed(2), 'recall (block)', 'ok') + tile(m.fp, 'false positives (of ' + d.dev.benign + ' benign)', m.fp ? 'bad' : 'ok') +
+      tile(m.fn, 'missed attacks (of ' + d.dev.positives + ')', m.fn ? 'bad' : 'ok') + tile(pc(m.acc, 0), 'verdict accuracy', 'acc') + tile(pc(m.exact, 0), 'category exact match', 'acc') + tile(pc(m.lang, 0), 'language accuracy', 'acc') + '</div>';
+    h += '<div class="twocol"><div><h4 class="rh" style="margin-top:6px">Models on vs rules only</h4><table class="rt"><tr><th></th><th class="n">with models (default)</th><th class="n">rules only</th></tr>' +
+      [['Precision', m.prec.toFixed(3), o.prec.toFixed(3)], ['Recall', m.rec.toFixed(3), o.rec.toFixed(3)], ['False positives', m.fp, o.fp], ['False negatives', m.fn, o.fn], ['Category exact match', m.exact.toFixed(3), o.exact.toFixed(3)]]
+        .map((x) => '<tr><td>' + x[0] + '</td><td class="n">' + x[1] + '</td><td class="n">' + x[2] + '</td></tr>').join('') + '</table></div>';
+    const rows = CATS.map((c) => { const p = d.dev.per_category[c] || { tp: 0, fp: 0, fn: 0 }; return '<tr><td>' + c + '</td><td class="n">' + p.tp + '</td><td class="n">' + p.fp + '</td><td class="n">' + p.fn + '</td></tr>'; }).join('');
+    h += '<div><h4 class="rh" style="margin-top:6px">Per category</h4><table class="rt"><tr><th>category</th><th class="n">TP</th><th class="n">FP</th><th class="n">FN</th></tr>' + rows + '</table></div></div>';
+
+    h += '<h3 class="rh">Efficiency note</h3><div class="twocol"><div><table class="rt"><tr><th>Item</th><th class="n">Value</th></tr>' +
+      Object.keys(e.model_mb).map((k) => '<tr><td>Model: ' + esc(k) + '</td><td class="n">' + e.model_mb[k] + ' MB</td></tr>').join('') +
+      '<tr><td>Rules (' + (L.rules || '') + ' YAML rules)</td><td class="n">' + e.rules_kb + ' KB</td></tr>' +
+      '<tr><td>Start-up + warm-up (fresh process)</td><td class="n">' + e.startup_s + ' s</td></tr>' +
+      '<tr><td>Latency per snippet, with models</td><td class="n">median ' + e.latency_ms_with_models.median + ' ms &middot; p95 ' + e.latency_ms_with_models.p95 + ' ms</td></tr>' +
+      '<tr><td>Latency per snippet, rules only</td><td class="n">median ' + e.latency_ms_rules_only.median + ' ms &middot; p95 ' + e.latency_ms_rules_only.p95 + ' ms</td></tr>' +
+      '<tr><td>Hardware</td><td class="n">' + esc(e.hardware) + '</td></tr></table>' +
+      '<p class="rsub">Dev rows are 10-40 lines; shorter snippets take about 2 ms median.</p></div>';
+    const sl = L.service_latency_ms || {};
+    h += '<div><table class="rt"><tr><th>Live from this server</th><th></th></tr>' +
+      '<tr><td>Requests handled</td><td class="n">' + ((L.requests && L.requests.scan) || 0) + ' scans, ' + ((L.requests && L.requests.batch_items) || 0) + ' batch items</td></tr>' +
+      '<tr><td>Service-side latency (n=' + (sl.n || 0) + ')</td><td class="n">' + (sl.n ? 'median ' + sl.median + ' ms &middot; p95 ' + sl.p95 + ' ms' : 'scan something first') + '</td></tr>' +
+      '<tr><td>Uptime</td><td class="n">' + Math.round((L.uptime_s || 0)) + ' s</td></tr>' +
+      '<tr><td>Models on disk (now)</td><td class="n">' + Object.keys(L.model_mb || {}).map((k) => L.model_mb[k] + ' MB').join(' + ') + '</td></tr></table></div></div>';
+
+    h += '<h4 class="rh">Accuracy and latency before / after each optimisation</h4><table class="rt"><tr><th>Change</th><th>Effect</th><th>Before</th><th>After</th></tr>' +
+      d.optimisation.map((x) => '<tr><td>' + esc(x.change) + '</td><td>' + esc(x.effect) + '</td><td>' + esc(x.before) + '</td><td>' + esc(x.after) + '</td></tr>').join('') + '</table>';
+
+    const f = g.fresh_blind, c = g.independent_corpus, rc = g.real_code_false_positives, rw = g.rewrite_stability, eh = g.expected_hidden_set;
+    h += '<h3 class="rh">Accuracy on code the engine had not seen</h3><p class="rsub">' + esc(g.note) + '</p><div class="rtiles">' +
+      tile(pc(f.verdict_accuracy), 'verdict accuracy, ' + f.snippets + ' fresh snippets', 'acc') + tile(pc(f.precision), 'precision', 'acc') + tile(pc(f.recall), 'recall', 'acc') + tile(pc(f.exact_category_sets, 0), 'exact category sets', 'acc') +
+      tile(c.must_flag_caught, 'independent corpus: attacks caught', 'ok') + tile(c.must_allow_allowed, 'independent corpus: benign allowed', 'ok') +
+      tile(pc(rc.stdlib_modules_400) + ' / ' + pc(rc.third_party_modules_250), 'false positives on real library code (stdlib / third-party)', 'bad') + tile(rw.changed + ' of ' + rw.rewrites, 'verdict changes under behaviour-preserving rewrites', 'ok') + '</div>' +
+      '<p class="rsub">Fresh-file errors: ' + esc(f.false_positives) + ' false positives, ' + esc(f.missed_attacks) + ' missed. Expected on the hidden set: about ' + esc(eh.verdict_accuracy) + ' verdict accuracy and ' + esc(eh.exact_category_sets) + ' exact category sets. Independent corpus: ' + esc(c.source) + '.</p>' +
+      '<p class="rsub">Generated ' + esc(d.generated) + ' by <code>eval/make_dev_results.py</code>; full tables in <code>docs/dev_results.md</code> and <code>docs/efficiency.md</code>.</p>';
+    box.innerHTML = h;
+  } catch (err) { box.innerHTML = '<div class="err">' + esc(err.message || err) + '</div>'; }
+}
+if (location.hash === '#results') { tab('res'); }
 
 function gateStrip(x) {
   const blocked = x.verdict === 'block';

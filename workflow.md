@@ -157,7 +157,7 @@ an obfuscation signal and an instruction-text classifier for prompt injection hi
 the unsafe snippet is scanned and blocked, and its marker file never appears; a decorated agent function is gated and its body is never entered. End on the line
 `INTERCEPTION PROOF: PASS - blocked code never executed`. If the organizer gives a pair, run it with `--safe` and `--unsafe`.
 
-**5. Numbers, honestly (45 s).** "Perfect on the public sample, which guided development, so we did not trust it. We ran blind tests on code we had not seen: 94-97% on verdicts, 75-85% on exact
+**5. Numbers, honestly (45 s).** Show the **Results** tab (`/#results`): the dev-sample precision, recall and false positives, models on vs off, per-category counts, the efficiency note (model sizes, start-up, latency, before/after each optimisation) and the numbers on unseen code. "Perfect on the public sample, which guided development, so we did not trust it. We ran blind tests on code we had not seen: 94-97% on verdicts, 75-85% on exact
 category sets, and we fixed what they exposed. On real library code we block about 7-8%, mostly genuine dual-use code. Rewriting code without changing its behaviour changed no verdict in over a thousand rewrites."
 
 **6. Close (20 s).** "Fast (about 2 ms), explainable, no LLM, own parsers and rules, a proven interception point, and honest about its limits."

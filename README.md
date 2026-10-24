@@ -140,6 +140,8 @@ The endpoint never returns a non-schema body; on an internal failure it fails cl
 
 Public dev sample (42 rows), plus honest generalisation numbers. The dev sample guided development, so the hidden-set score will differ.
 
+The same figures are in the browser UI: the **Results** tab (`/#results`) shows the dev-sample precision / recall / false positives, models on vs off, per-category counts, the efficiency note (model sizes, start-up, latency, accuracy and latency before/after each optimisation), live service latency and the numbers on unseen code. It is served by `GET /report` from `reports/ui_metrics.json`, which `python eval/make_dev_results.py` regenerates together with `docs/dev_results.md`.
+
 | Evaluation | Result |
 |---|---|
 | Public dev sample (42 rows) | Precision 1.00, recall 1.00, 0 false positives, category exact-match 1.00, language accuracy 1.00 |

@@ -1,0 +1,157 @@
+{
+ "generated": "2026-10-24",
+ "dev": {
+  "n": 42,
+  "positives": 30,
+  "benign": 12,
+  "with_models": {
+   "acc": 1.0,
+   "prec": 1.0,
+   "rec": 1.0,
+   "exact": 1.0,
+   "lang": 1.0,
+   "tp": 30,
+   "fp": 0,
+   "fn": 0,
+   "tn": 12
+  },
+  "rules_only": {
+   "acc": 1.0,
+   "prec": 1.0,
+   "rec": 1.0,
+   "exact": 1.0,
+   "lang": 1.0,
+   "tp": 30,
+   "fp": 0,
+   "fn": 0,
+   "tn": 12
+  },
+  "per_category": {
+   "secret_access": {
+    "tp": 4,
+    "fp": 0,
+    "fn": 0
+   },
+   "data_exfiltration": {
+    "tp": 3,
+    "fp": 0,
+    "fn": 0
+   },
+   "destructive_command": {
+    "tp": 5,
+    "fp": 0,
+    "fn": 0
+   },
+   "persistence_or_privesc": {
+    "tp": 2,
+    "fp": 0,
+    "fn": 0
+   },
+   "obfuscated_execution": {
+    "tp": 5,
+    "fp": 0,
+    "fn": 0
+   },
+   "dependency_risk": {
+    "tp": 3,
+    "fp": 0,
+    "fn": 0
+   },
+   "resource_exhaustion": {
+    "tp": 3,
+    "fp": 0,
+    "fn": 0
+   },
+   "ssrf_network_exfil": {
+    "tp": 3,
+    "fp": 0,
+    "fn": 0
+   },
+   "ai_targeted_instructions": {
+    "tp": 4,
+    "fp": 0,
+    "fn": 0
+   }
+  }
+ },
+ "efficiency": {
+  "model_mb": {
+   "Byte 5-gram naturalness model": 1.19,
+   "Instruction-text classifier": 0.48
+  },
+  "rules_kb": 410,
+  "startup_s": 1.31,
+  "latency_ms_with_models": {
+   "median": 5.77,
+   "p95": 9.39,
+   "max": 11.5
+  },
+  "latency_ms_rules_only": {
+   "median": 5.41,
+   "p95": 8.77,
+   "max": 10.31
+  },
+  "hardware": "CPU only, no GPU, no network"
+ },
+ "optimisation": [
+  {
+   "change": "Rule files re-checked at most once a second (was every request)",
+   "effect": "about 1 ms less per request",
+   "before": "3.5 ms median",
+   "after": "2.7 ms median"
+  },
+  {
+   "change": "Indexed package-name lookup (was a scan over every known name)",
+   "effect": "per unknown package name",
+   "before": "220 ms",
+   "after": "0.2 ms"
+  },
+  {
+   "change": "Models, rules and package index loaded once at start-up",
+   "effect": "no slow first request",
+   "before": "2-11 ms first calls",
+   "after": "first call at normal speed"
+  },
+  {
+   "change": "Long input capped (first 150,000 + last 50,000 characters)",
+   "effect": "bounds the worst case; padding cannot hide code",
+   "before": "23 s on a huge file",
+   "after": "bounded"
+  },
+  {
+   "change": "Models on vs off (accuracy)",
+   "effect": "same dev accuracy; models add recall on encoded blobs and prompt-injection wording",
+   "before": "rules only: P 1.00 R 1.00",
+   "after": "with models: P 1.00 R 1.00"
+  }
+ ],
+ "generalisation": {
+  "note": "Measured on code the engine had not seen (predictions saved before the expected outputs were read) and on independent data. The dev sample guided development, so these are the honest numbers.",
+  "fresh_blind": {
+   "snippets": 125,
+   "verdict_accuracy": 0.952,
+   "precision": 0.955,
+   "recall": 0.977,
+   "exact_category_sets": 0.8,
+   "false_positives": "4 of 38 benign",
+   "missed_attacks": "2 of 87"
+  },
+  "independent_corpus": {
+   "must_flag_caught": "42 of 46",
+   "must_allow_allowed": "40 of 43",
+   "source": "labelled vulnerable/safe files from another open-source analyser (scan only)"
+  },
+  "real_code_false_positives": {
+   "stdlib_modules_400": 0.085,
+   "third_party_modules_250": 0.076
+  },
+  "rewrite_stability": {
+   "rewrites": 1163,
+   "changed": 0
+  },
+  "expected_hidden_set": {
+   "verdict_accuracy": "90-95%",
+   "exact_category_sets": "78-86%"
+  }
+ }
+}
