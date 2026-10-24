@@ -147,6 +147,7 @@ fresh blind runs were used to check that).
 ## 6. What is left (only you can do these)
 
 0. **ngrok is installed (v3.3.1); it only needs your authtoken.** Get it from https://dashboard.ngrok.com (Your Authtoken), then run once in a terminal: `ngrok config add-authtoken YOUR_TOKEN`. Then: window 1 `scripts\start_service.bat`; window 2 `ngrok http 8000`; window 3 `python scripts\public_url.py` (finds the public URL, runs the judge-style schema check on it and prints the address to submit, base + `/scan`). Free-tier ngrok may show a browser warning page to *browsers*; scripts calling the API are not affected, and a client can add the header `ngrok-skip-browser-warning: true` if needed.
+**What to put in the submission form (base URL):** the ngrok https address with **no path**, e.g. `https://abcd1234.ngrok-free.app` (`python scripts\public_url.py` prints it). The judged endpoint is `POST <base>/scan`; the base address itself and `/api/scan`, `/analyze`, `/predict`, `/evaluate`, `/check` answer the same way, so any of those works. If the form asks for the full endpoint instead, give `<base>/scan`. Do not add a trailing slash or a query string.
 1. **Public endpoint.** Run the service on your laptop and expose it (`cloudflared tunnel --url http://127.0.0.1:8000` or `ngrok http 8000`), or deploy the
    `Dockerfile` on a free host. Open it from a phone on mobile data. Send the URL to the organizer before the window opens.
    Keep the laptop awake and plugged in, and keep the terminal open. Start the service about 5 minutes before the window.

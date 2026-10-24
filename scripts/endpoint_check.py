@@ -82,6 +82,15 @@ def main() -> int:
         ok = not errs and out["verdict"] == want
         bad += 0 if ok else 1
         print(f"  {'ok  ' if ok else 'FAIL'}  {name:30s} -> {out.get('verdict')} {out.get('categories')} risk {out.get('risk_score')}  {ms:6.1f} ms" + (f"   {errs}" if errs else ""))
+    # the base address itself (in case the judge posts to the URL that was submitted) and the common alias paths must answer the same way
+    for path in ("/", "/api/scan", "/analyze", "/predict"):
+        try:
+            out, ms = post(base, json.dumps({"code": "rm -rf /"}).encode(), path)
+            ok = not problems(out) and out["verdict"] == "block"
+        except Exception as e:
+            out, ok = f"{type(e).__name__}: {e}", False
+        bad += 0 if ok else 1
+        print(f"  {'ok  ' if ok else 'FAIL'}  POST {path:12s} -> {'block, valid schema' if ok else out}")
     # hostile / malformed bodies must still give a schema-valid answer, never an error
     for name, body in (("missing code field", b'{"nope": 1}'), ("not JSON", b"not json"), ("code is a number", b'{"code": 5}'), ("null code", b'{"code": null}')):
         try:
