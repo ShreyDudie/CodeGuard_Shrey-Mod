@@ -17,8 +17,9 @@ Everything needed to run, check, submit and present the project. Last verified: 
 | Batch endpoint | Done | `POST /batch`, plus `python -m codeguard batch file.jsonl` |
 | Minimal UI / script for the live demo | Done | browser UI at `http://127.0.0.1:8000/` (input, verdict, risk, categories, reason, highlighted lines, latency) |
 | Public GitHub repository | **You** | create the repo and push (section 6); no git repo exists yet in this folder |
-| Runnable service + endpoint URL submitted in advance | **You** | needs a public tunnel or host (section 6) |
-| Evaluation on the dev sample + efficiency note | Done | `reports/dev_report.json`, `docs/efficiency.md` |
+| Runnable service | Done | `python -m codeguard serve`, `scripts/start_service.bat`, `Dockerfile`; verified by `scripts/endpoint_check.py` |
+| Endpoint URL submitted in advance | **You** | needs a public tunnel or host (section 6); `cloudflared` / `ngrok` are not installed on this machine |
+| Evaluation on the dev sample + efficiency note | Done | `docs/dev_results.md` (precision, recall, false positives, model sizes, latency, before/after), `docs/efficiency.md`, `reports/dev_report.json`; regenerate with `python eval/make_dev_results.py` |
 | README: architecture, every component + licence, assumptions, limitations | Done | `README.md`, `THIRD_PARTY.md` |
 | 2-3 page write-up | Written, **you export to PDF** | `docs/writeup.md` |
 | Floors: valid schema, live interception demo, no execution outside the demo pair, no hard-coded dev answers | Pass | section 5 |
@@ -41,6 +42,15 @@ curl -s 127.0.0.1:8000/health
 curl -s 127.0.0.1:8000/scan -H "content-type: application/json" -d '{"code":"def add(a, b):\n    return a + b"}'
 curl -s 127.0.0.1:8000/scan -H "content-type: application/json" -d '{"code":"rm -rf /"}'
 ```
+
+One-click start: `scripts\start_service.bat` (Windows) or `scripts/start_service.sh`. Check a running endpoint, local or public, exactly as the judge will use it:
+
+```bash
+python scripts/endpoint_check.py http://127.0.0.1:8000
+python scripts/endpoint_check.py https://YOUR-PUBLIC-URL     # from a second network, before you submit the URL
+```
+
+It sends probe snippets, validates every response against the fixed schema (also for missing / non-JSON / null bodies and for `/batch`) and prints latency. `PASS` means the endpoint is ready to submit.
 
 ## 3. Pre-flight checklist (run before the judges arrive)
 

@@ -33,6 +33,10 @@ _SAMPLES = ["import os\nos.system('echo hi')\n", "echo hello\n", "SELECT 1;\n", 
 
 @app.on_event("startup")
 def _warm() -> None:
+    try:
+        pipeline.warmup()           # rules, models, package index: the first real request must not pay for any of them
+    except Exception:
+        pass
     for s in _SAMPLES:
         try:
             pipeline.scan(s)

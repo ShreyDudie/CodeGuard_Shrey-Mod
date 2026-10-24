@@ -81,6 +81,7 @@ python -m codeguard serve --port 8000          # http://localhost:8000  (UI at /
 
 ```bash
 curl -s localhost:8000/scan -H 'content-type: application/json' -d '{"code": "print(1)"}'
+python scripts/endpoint_check.py http://127.0.0.1:8000   # validates the live endpoint against the fixed schema (use the public URL too)
 python demo/intercept_check.py                 # interception proof (marker file appears / never appears)
 ```
 
