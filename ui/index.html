@@ -520,6 +520,7 @@ function ordered(x) {
 function prettyJson(o) {
   const q = (v) => esc(JSON.stringify(v));
   return '{\n' +
+    '  "idx": ' + q(o.idx) + ',\n' +
     '  "verdict": <span class="v-' + o.verdict + '">' + q(o.verdict) + '</span>,\n' +
     '  "risk_score": ' + q(o.risk_score) + ',\n' +
     '  "categories": ' + q(o.categories) + ',\n' +

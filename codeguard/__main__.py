@@ -34,8 +34,11 @@ def main(argv=None) -> int:
     if args.cmd == "scan":
         from . import scan
         code = sys.stdin.read() if args.path == "-" else open(args.path, encoding="utf-8", errors="replace").read()
+        import time
+        t0 = time.perf_counter()
         res = scan(code, verbose=args.explain)
-        print(json.dumps(res, indent=2, ensure_ascii=False))
+        shown = {"idx": 1, **res, "latency_ms": round((time.perf_counter() - t0) * 1000.0, 2)}
+        print(json.dumps(shown, indent=2, ensure_ascii=False))
         return 0 if res["verdict"] == "allow" else 2
     if args.cmd == "batch":
         from .batchfile import run

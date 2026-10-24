@@ -7,7 +7,7 @@ Accepted input files
   anything else    : the whole file is ONE snippet (e.g. a .py / .sh / .sql / .md file)
   a directory      : every file inside is scanned as one snippet
 
-Output: exactly the fixed schema per snippet, in input order (JSON Lines by default, or a JSON array).
+Output: the fixed schema per snippet plus idx (1-based position) and latency_ms, in input order (JSON Lines by default, or a JSON array).
 """
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ import io
 import json
 import os
 import sys
+import time
 from typing import Iterable, Iterator
 
 from . import pipeline
@@ -49,9 +50,10 @@ def read_items(path: str) -> list:
 
 
 def scan_items(items: list, keep_id: bool = False, verbose: bool = False) -> Iterator[dict]:
-    for ident, code in items:
+    for n, (ident, code) in enumerate(items, start=1):
+        t0 = time.perf_counter()
         res = pipeline.scan(code, verbose=verbose)
-        out = {k: res[k] for k in SCHEMA_KEYS}
+        out = {"idx": n, **{k: res[k] for k in SCHEMA_KEYS}, "latency_ms": round((time.perf_counter() - t0) * 1000.0, 2)}
         if verbose:
             out["explanation"] = res.get("explanation")
         if keep_id and ident is not None:

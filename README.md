@@ -59,12 +59,14 @@ Output (illustrative; run it yourself for the exact values):
 
 ```json
 {
+  "idx": 1,
   "verdict": "block",
   "risk_score": 0.97,
   "categories": ["secret_access", "data_exfiltration"],
   "code_language": "python",
   "reason": "Reads a cloud secret from the environment and sends it to an external host.",
-  "vulnerable_lines": [2, 3]
+  "vulnerable_lines": [2, 3],
+  "latency_ms": 2.4
 }
 ```
 
@@ -103,7 +105,7 @@ python -m codeguard batch my_folder/                # every file in the folder i
 ```
 
 - **Input:** `{"code": "..."}` per line. Extra fields like id/language/label are ignored; `--keep-id` copies an id into the output.
-- **Output:** exactly the six schema fields per snippet.
+- **Output:** the six schema fields per snippet, plus `idx` (position) and `latency_ms`.
 - **Browser UI** (`/`): has a file-upload box that returns a downloadable `.jsonl`.
 
 ## Interface
@@ -112,16 +114,18 @@ python -m codeguard batch my_folder/                # every file in the folder i
 
 | Field | Type | Meaning |
 |---|---|---|
+| `idx` | int | Position of the snippet (1-based in a batch or file; the request number for a single `/scan`; echoes a caller-supplied `idx`) |
 | `verdict` | `"allow"` \| `"block"` | Final decision |
 | `risk_score` | float | Ranking score, not a calibrated probability |
 | `categories` | list of strings | Behaviour categories triggered (fixed set of nine) |
 | `code_language` | string | Detected language |
 | `reason` | string | Plain-English explanation |
 | `vulnerable_lines` | list of ints | Lines responsible for the verdict |
+| `latency_ms` | float | Time the service spent on this snippet |
 
 ```json
-{"verdict": "allow|block", "risk_score": 0.97, "categories": ["secret_access", "data_exfiltration"],
- "code_language": "python", "reason": "plain-English explanation", "vulnerable_lines": [8, 17]}
+{"idx": 1, "verdict": "allow|block", "risk_score": 0.97, "categories": ["secret_access", "data_exfiltration"],
+ "code_language": "python", "reason": "plain-English explanation", "vulnerable_lines": [8, 17], "latency_ms": 2.4}
 ```
 
 | Endpoint | Purpose |
