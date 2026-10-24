@@ -109,6 +109,7 @@ The nine categories and what detects each:
 | Measure | Result |
 |---|---|
 | Public dev sample (42 rows, guided development) | precision 1.00, recall 1.00, 0 false positives, category exact 1.00, language 1.00 |
+| **Held-out test set: 239 unique snippets from six blind runs, first-look predictions** (`eval/make_test_report.py`; also on the UI Results tab) | verdict accuracy 95.4%, precision 97.1%, recall 96.6%, 5 FP of 65 benign, 6 missed of 174, exact category sets 84.5% |
 | First look at brand-new blind files | verdict accuracy 94-97%, exact category sets 75-85% (two files: 60 and 65 snippets) |
 | Independent public corpus (45+ labelled vulnerable/safe files from another project) | 42/46 must-flag caught, 40/43 must-allow allowed |
 | False positives on real library code | 8.5% of 400 stdlib modules, 7.6% of 250 third-party modules (dual-use code such as dynamic import and eval) |
@@ -195,6 +196,7 @@ python tests/test_metamorphic.py                # behaviour-preserving rewrites
 python tests/test_pdf_extract.py                # a file of snippets (also after a PDF's line wrapping) gives one result per snippet
 python tests/test_demo_gate.py                  # the UI's interception proof matches the CLI proof
 python tests/stdlib_fp.py --models              # false positives on real standard-library code
+python eval/make_test_report.py                 # builds the held-out test set from the blind runs, scores first look vs now, writes reports/test_report.json for the UI
 python eval/code_lr_eval.py                     # does a trained code classifier add anything? (it does not; not shipped)
 ```
 

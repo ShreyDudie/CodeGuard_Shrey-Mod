@@ -17,6 +17,8 @@ def main():
     assert 0 <= m["prec"] <= 1 and 0 <= m["rec"] <= 1 and m["fp"] >= 0
     assert d["efficiency"]["model_mb"] and d["efficiency"]["latency_ms_with_models"]["median"] > 0
     assert d["live"]["rules"] > 100 and d["live"]["model_mb"]
+    t = d["test"]
+    assert t["unique_snippets"] > 200 and 0.9 <= t["first_look"]["verdict_accuracy"] <= 1 and t["first_look"]["n"] == t["unique_snippets"]
     print("report endpoint ok: precision %.2f recall %.2f, %d false positives, models %s MB" % (m["prec"], m["rec"], m["fp"], list(d["live"]["model_mb"].values())))
 
 

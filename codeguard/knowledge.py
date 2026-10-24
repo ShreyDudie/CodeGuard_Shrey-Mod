@@ -314,7 +314,7 @@ def secret_like_name(name: str) -> bool:
     return False
 
 
-_ENV_SECRET = re.compile(r"(secret|token|passw|pwd|api[_-]?key|apikey|private|credential|auth|access[_-]?key|session[_-]?key|bearer|cookie|jwt|signing|encryption[_-]?key|_key$|^key$|ssh|github_pat|gh_token)", re.I)
+_ENV_SECRET = re.compile(r"(secret|token|passw|pwd|api[_-]?key|apikey|private|credential|auth|access[_-]?key|session[_-]?key|bearer|cookie|jwt|signing|encryption[_-]?key|_key$|^key$|ssh|github_pat|gh_token|(?:database|db|redis|mongo(?:db)?|postgres(?:ql)?|mysql|amqp|broker|sqlalchemy_database)[a-z_]*(?:url|uri|dsn)$|connection[_-]?string|conn[_-]?str)", re.I)
 
 
 def secret_like_env(name: str) -> bool:
@@ -389,6 +389,8 @@ def literal_secret(name: str, value: str) -> tuple[float, str]:
     emb = embedded_secret(value)
     if emb:
         return emb
+    if re.fullmatch(r"(AKIA|ASIA|AGPA|AIDA|AROA|ANPA|ANVA|AIPA)[A-Z0-9_]{6,}", (value or "").strip()):
+        return 0.7, "aws_key_like"       # an AWS access-key-id shape is a credential whatever the variable is called
     if not name or not secret_like_name(name):
         return 0.0, ""
     if re.fullmatch(r"(AKIA|ASIA|AGPA|AIDA|AROA|ANPA|ANVA|AIPA)[A-Z0-9_]{6,}", value.strip()):

@@ -159,6 +159,9 @@ def report():
     if not os.path.exists(path):
         return JSONResponse({"error": "reports/ui_metrics.json is missing: run python eval/make_dev_results.py"}, status_code=404)
     data = json.load(open(path, encoding="utf-8"))
+    tpath = os.path.join(os.path.dirname(path), "test_report.json")
+    if os.path.exists(tpath):
+        data["test"] = json.load(open(tpath, encoding="utf-8"))          # held-out test set results, written by eval/make_test_report.py
     models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
     live_sizes = {}
     for label, fn in (("Byte 5-gram naturalness model", "lm_py.npz"), ("Instruction-text classifier", "text_lr.npz")):

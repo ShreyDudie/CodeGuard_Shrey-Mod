@@ -144,6 +144,7 @@ The same figures are in the browser UI: the **Results** tab (`/#results`) shows 
 
 | Evaluation | Result |
 |---|---|
+| **Held-out test set** (239 unique snippets from six blind runs, first-look predictions saved before the answers were read) | Verdict accuracy 95.4%, precision 97.1%, recall 96.6%, 5 false positives of 65 benign, 6 missed of 174 malicious, category sets exactly right 84.5%, language 97.9% (`eval/make_test_report.py`, shown on the UI Results tab) |
 | Public dev sample (42 rows) | Precision 1.00, recall 1.00, 0 false positives, category exact-match 1.00, language accuracy 1.00 |
 | Latency (warm) | ~2 ms median, 7 ms p95 per snippet (`reports/dev_report.json`, `docs/efficiency.md`) |
 | Fresh blind files (predictions saved before expected outputs were read) | 94-97% verdict accuracy, 75-85% exact category sets |

@@ -247,6 +247,33 @@ if (/^#ex-(safe|meta|ai)$/.test(location.hash)) { $('#code').value = EX[location
 /* ---------------- results: dev-sample metrics + efficiency note ---------------- */
 const pc = (x, d) => (100 * x).toFixed(d === undefined ? 1 : d) + '%';
 function tile(v, label, cls) { return '<div class="rtile ' + (cls || '') + '"><b>' + v + '</b><span>' + label + '</span></div>'; }
+function renderTest(t) {
+  if (!t) { return ''; }
+  const f = t.first_look, n = t.now, x = t.expanded_dataset;
+  const srcRows = Object.keys(t.sources).map((k) => {
+    const b = t.first_look_by_source[k]; if (!b) { return ''; }
+    return '<tr><td>' + esc(k) + '</td><td class="n">' + t.sources[k].file_snippets + '</td><td class="n">' + b.n + '</td><td class="n">' + pc(b.verdict_accuracy) + '</td><td class="n">' + b.false_positives + '</td><td class="n">' + b.missed_attacks + '</td><td class="n">' + pc(b.exact_category_sets, 0) + '</td></tr>';
+  }).join('');
+  const catRows = CATS.map((c) => {
+    const a = f.per_category[c] || { tp: 0, fp: 0, fn: 0 }, nn = n.per_category[c] || { tp: 0, fp: 0, fn: 0 };
+    return '<tr><td>' + c + '</td><td class="n">' + a.tp + '</td><td class="n">' + a.fp + '</td><td class="n">' + a.fn + '</td><td class="n">' + nn.tp + '</td><td class="n">' + nn.fp + '</td><td class="n">' + nn.fn + '</td></tr>';
+  }).join('');
+  return '<h3 class="rh" style="margin-top:0">Held-out test set: ' + t.unique_snippets + ' unique snippets built from the provided data</h3>' +
+    '<p class="rsub">' + f.malicious + ' malicious and ' + f.benign + ' benign snippets from six blind runs (files of code the system had not seen). Each snippet counts once, at its first appearance (' + t.duplicates_skipped +
+    ' repeats skipped). <b>First look</b> = the predictions that were saved <i>before</i> the expected outputs were read, so the system had never seen these snippets. Test-set fingerprint ' + esc(t.fingerprint) +
+    '; the code itself is kept out of the repository because it contains placeholder credentials that GitHub rejects.</p>' +
+    '<div class="rtiles">' + tile(pc(f.verdict_accuracy), 'verdict accuracy (first look)', 'acc') + tile(pc(f.precision), 'precision (block)', 'ok') + tile(pc(f.recall), 'recall (block)', 'ok') +
+    tile(f.fp + ' of ' + f.benign, 'false positives (' + pc(f.false_positive_rate) + ' of benign)', 'bad') + tile(f.fn + ' of ' + f.malicious, 'missed attacks', 'bad') +
+    tile(pc(f.exact_category_sets), 'category sets exactly right', 'acc') + tile(f.category_precision.toFixed(2) + ' / ' + f.category_recall.toFixed(2), 'category precision / recall', 'acc') + tile(pc(f.language_accuracy), 'language accuracy', 'acc') + '</div>' +
+    '<div class="twocol"><div><h4 class="rh" style="margin-top:6px">First look, run by run</h4><table class="rt"><tr><th>run</th><th class="n">in file</th><th class="n">new</th><th class="n">accuracy</th><th class="n">FP</th><th class="n">missed</th><th class="n">exact sets</th></tr>' + srcRows + '</table>' +
+    '<p class="rsub">Runs 1 and 2 were scored under the earlier one-category-per-snippet labelling style, which lowers their exact-set figure.</p></div>' +
+    '<div><h4 class="rh" style="margin-top:6px">Per category: first look vs now</h4><table class="rt"><tr><th>category</th><th class="n">TP</th><th class="n">FP</th><th class="n">FN</th><th class="n">TP now</th><th class="n">FP now</th><th class="n">FN now</th></tr>' + catRows + '</table></div></div>' +
+    '<div class="rtiles">' + tile(pc(n.verdict_accuracy, 0), 'same snippets scored by today\'s engine (' + n.fp + ' FP, ' + n.fn + ' missed)', 'acc') +
+    tile(pc(n.exact_category_sets), 'category sets exactly right today', 'acc') +
+    tile(pc(x.verdict_accuracy, 0), 'expanded_dataset.jsonl, ' + x.unique_snippets + ' unique snippets (' + x.fn + ' missed)', 'acc') + '</div>' +
+    '<p class="rsub"><b>How to read this:</b> the first-look figures are the honest estimate for new code. The "now" figures are higher because every miss in these files was then fixed (so they are development data), and the same holds for the expanded dataset, whose two gaps (key-shaped values under any variable name, credential-bearing environment names such as DATABASE_URL) were fixed after this run found them. Generated ' + esc(t.generated) + ' by <code>eval/make_test_report.py</code>.</p>';
+}
+
 async function loadResults() {
   const box = $('#resOut');
   try {
@@ -254,7 +281,7 @@ async function loadResults() {
     if (!r.ok) throw new Error(r.status === 404 ? 'no report on this server yet: run  python eval/make_dev_results.py  and reload' : 'server returned ' + r.status);
     const d = await r.json();
     const m = d.dev.with_models, o = d.dev.rules_only, e = d.efficiency, g = d.generalisation, L = d.live || {};
-    let h = '<h3 class="rh" style="margin-top:0">Public dev sample (' + d.dev.n + ' rows: ' + d.dev.positives + ' malicious, ' + d.dev.benign + ' benign)</h3>' +
+    let h = renderTest(d.test) + '<h3 class="rh">Public dev sample (' + d.dev.n + ' rows: ' + d.dev.positives + ' malicious, ' + d.dev.benign + ' benign)</h3>' +
       "<p class=\"rsub\">The organiser's public sample. It guided development, so read it as a sanity check; the honest numbers on unseen code are further down.</p>" +
       '<div class="rtiles">' + tile(m.prec.toFixed(2), 'precision (block)', 'ok') + tile(m.rec.toFixed(2), 'recall (block)', 'ok') + tile(m.fp, 'false positives (of ' + d.dev.benign + ' benign)', m.fp ? 'bad' : 'ok') +
       tile(m.fn, 'missed attacks (of ' + d.dev.positives + ')', m.fn ? 'bad' : 'ok') + tile(pc(m.acc, 0), 'verdict accuracy', 'acc') + tile(pc(m.exact, 0), 'category exact match', 'acc') + tile(pc(m.lang, 0), 'language accuracy', 'acc') + '</div>';
