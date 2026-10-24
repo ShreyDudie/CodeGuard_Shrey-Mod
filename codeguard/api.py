@@ -86,6 +86,8 @@ def _scan_one(code: str, verbose: bool, ident=None, source: str = "") -> dict:
         _counts["scan"] += 1
         _counts[res.get("verdict", "block")] = _counts.get(res.get("verdict", "block"), 0) + 1
     predlog.record(ident, code, res, source or ("ui" if verbose else "api"), dt)        # kept in memory so the answer key can be scored later
+    res = dict(res)
+    res["latency_ms"] = round(dt, 2)                                                    # extra output column: time this request took inside the service
     return res
 
 
