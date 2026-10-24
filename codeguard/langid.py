@@ -31,7 +31,7 @@ _C = re.compile(r"(#include\s*[<\"]|\bint\s+main\s*\(|\bprintf\s*\(|\bmalloc\s*\
 _RUST = re.compile(r"(\bfn\s+main\s*\(|\blet\s+mut\s+|\buse\s+std::|\bimpl\s+\w+|println!\(|\bpub\s+fn\b|->\s*Result<)")
 _BASH_CMDLINE = re.compile(r"(?m)^[ \t]*(?:sudo[ \t]+)?(?:rm|curl|wget|chmod|chown|chgrp|dd|mkfs(?:\.\w+)?|nc|ncat|netcat|kill|pkill|killall|systemctl|crontab|iptables|nohup|ssh|scp|rsync|tar|unzip|source|export|useradd|usermod|passwd|visudo|mount|umount|shred|truncate|history|unset|eval|exec|insmod|modprobe|bash|sh|zsh)(?:[ \t]+(?!=)\S|[ \t]*$)")
 _BASH_PIPELINE = re.compile(r"(?m)^[ \t]*(?:cat|head|tail|grep|echo|find|ls|ps|printenv|env|base64|xxd|tee|ping|nslookup|dig|sed|awk)[ \t]+(?!=)\S.*(?:[|>])[ \t]*\S|^[ \t]*(?:cat|ls|find|head|tail)[ \t]+(?:-\w+[ \t]+)*[~/]\S|^[ \t]*(?:env|printenv|history|set)[ \t]*\|[ \t]*\S")
-_POWERSHELL_STRONG = re.compile(r"(?m)(^\s*\$[A-Z][a-z]+[A-Za-z]*\s*=|HK(?:CU|LM|CR):|\$ErrorActionPreference|^\s*function\s+[A-Z][a-z]+-[A-Z]\w+|\$PSScriptRoot|^\s*(?:Get|Set|New|Remove|Invoke|Start|Stop|Add|Out|Write|Import|Export|Test)-\w+\s+-\w+|\$\w+\.\w+\()")
+_POWERSHELL_STRONG = re.compile(r"(?m)(^\s*\$[A-Z][a-z]+[A-Za-z]*\s*=|HK(?:CU|LM|CR):|\$ErrorActionPreference|^\s*function\s+[A-Z][a-z]+-[A-Z]\w+|\$PSScriptRoot|(?i:\s-(?:encodedcommand|windowstyle|noprofile|noninteractive|executionpolicy)\b)|^\s*(?:Get|Set|New|Remove|Invoke|Start|Stop|Add|Out|Write|Import|Export|Test)-\w+\s+-\w+|\$\w+\.\w+\()")
 _POWERSHELL = re.compile(r"(\$env:\w+|\b(Get|Set|New|Remove|Invoke|Start|Stop|Add|Out|Write|Import|Export|Test)-[A-Z]\w+|\bparam\s*\(|\[Parameter|\$_\.|\|\s*(ForEach|Where)-Object|-ExecutionPolicy|\biex\b|\bpowershell(\.exe)?\s+-)", re.I)
 _DOCKER = re.compile(r"^\s*(FROM\s+\S+|RUN\s+|COPY\s+|ADD\s+|ENTRYPOINT\s+|CMD\s+|WORKDIR\s+|EXPOSE\s+|ENV\s+\w+|ARG\s+\w+|USER\s+\w+|LABEL\s+|HEALTHCHECK)", re.M)
 _YAML_KEYS = re.compile(r"^\s*(-\s+)?[\w.\-/\"'$@{}]+\s*:(\s+.*)?$", re.M)
@@ -58,10 +58,12 @@ def _try_python(code: str) -> bool:
         # tolerate a lightly truncated snippet
         lines = code.splitlines()
         for cut in (1, 2, 3):
-            if len(lines) > cut:
+            if len(lines) > 3 * cut:           # a truncation costs a small fraction of the text, and what is left must be real code, not just a comment
                 try:
-                    ast.parse("\n".join(lines[:-cut]))
-                    return True
+                    head = "\n".join(lines[:-cut])
+                    ast.parse(head)
+                    if not _is_trivial_python(head):
+                        return True
                 except SyntaxError:
                     continue
         return False
