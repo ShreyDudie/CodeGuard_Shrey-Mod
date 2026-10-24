@@ -62,7 +62,7 @@ It sends probe snippets, validates every response against the fixed schema (also
 | 4 | Garbage input | `curl -d '{"nope":1}'` and `curl -d 'not json'` | valid schema body, no 500 |
 | 5 | Batch | `POST /batch` with two items | two results in order |
 | 6 | Interception | `python demo/intercept_check.py` | `INTERCEPTION PROOF: PASS` |
-| 7 | Regression | `python tests/run_cases.py` | `170/170 ok  FP=0 FN=0` |
+| 7 | Regression | `python tests/run_cases.py` | `203/203 ok  FP=0 FN=0` |
 | 8 | Robustness | `python tests/test_robustness.py` | `robustness ok` |
 | 9 | Schema | `python tests/test_schema.py` | `0 problems` |
 | 10 | Dev sample | `python eval/run_eval.py codeguard_dev.jsonl` | precision 1.0, recall 1.0, 0 FP |
@@ -85,7 +85,7 @@ codeguard/
   intercept.py              @guarded, guarded_exec, guard(): scan before run, fail closed
 rules/                      187 declarative rules, one file per category
 demo/                       intercept_check.py + the safe/unsafe pair
-eval/, tests/               evaluation, 170 regression cases, rewrite-stability, robustness, schema tests
+eval/, tests/               evaluation, 203 regression cases, rewrite-stability, robustness, schema tests
 reports/                    dev report, blind-run predictions, baselines
 docs/                       writeup.md, efficiency.md
 ```
@@ -111,8 +111,8 @@ The nine categories and what detects each:
 | Public dev sample (42 rows, guided development) | precision 1.00, recall 1.00, 0 false positives, category exact 1.00, language 1.00 |
 | First look at brand-new blind files | verdict accuracy 94-97%, exact category sets 75-85% (two files: 60 and 65 snippets) |
 | Independent public corpus (45+ labelled vulnerable/safe files from another project) | 42/46 must-flag caught, 40/43 must-allow allowed |
-| False positives on real library code | 8.2% of 400 stdlib modules, 7.2% of 250 third-party modules (dual-use code such as dynamic import and eval) |
-| Rewrite stability | 1,016 behaviour-preserving rewrites, 0 changed verdicts |
+| False positives on real library code | 8.5% of 400 stdlib modules, 7.6% of 250 third-party modules (dual-use code such as dynamic import and eval) |
+| Rewrite stability | 1,163 behaviour-preserving rewrites, 0 changed verdicts |
 | Latency (library) | median about 2 ms, 95th percentile about 7 ms, 86% of calls under 5 ms; service warm-up about 1 s |
 | Model size | 1.2 MB language model + 0.5 MB text model; no GPU |
 
@@ -165,7 +165,7 @@ category sets, and we fixed what they exposed. On real library code we block abo
 
 | Question | Answer |
 |---|---|
-| Is this just a keyword list? | No. It tracks data flow with labels, resolves string building and decoding, and removes findings when a safety proof dominates the call. Renaming and noise changed no verdict in 1,016 rewrites. |
+| Is this just a keyword list? | No. It tracks data flow with labels, resolves string building and decoding, and removes findings when a safety proof dominates the call. Renaming and noise changed no verdict in 1,163 rewrites. |
 | Did you train on the dev sample? | The dev rows are a test set. No dev id or snippet is in the rules or training data. Rules describe behaviours; fresh blind files and rewrites check that. |
 | Why not a bigger model? | A MiniLM classifier fine-tuned on our 500-row file recalled 0 of the dev positives: its templates are too narrow. We kept it off and say so. Two small models are used where they validated: obfuscation and instruction text. |
 | What is the false-positive rate? | 0 on the dev sample, 8% on real library modules, which are full of legitimate eval and dynamic imports. |
@@ -188,7 +188,7 @@ category sets, and we fixed what they exposed. On real library code we block abo
 ## 9. Re-running the evaluations
 
 ```bash
-python tests/run_cases.py                       # 170 regression cases with benign twins
+python tests/run_cases.py                       # 203 regression cases with benign twins
 python eval/benchmark.py --compare reports/baseline_v7   # every labelled set vs the saved baseline
 python tests/test_metamorphic.py                # behaviour-preserving rewrites
 python tests/stdlib_fp.py --models              # false positives on real standard-library code

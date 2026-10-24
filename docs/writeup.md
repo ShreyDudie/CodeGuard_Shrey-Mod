@@ -46,8 +46,8 @@ the marker the unsafe snippet would write never appears, and a decorated functio
   snippets; the misses were coverage gaps and label conventions, which we fixed generally (guard-dominated deletes, command-line passwords, array loops,
   PowerShell detection, bare shell one-liners, environment dumps) with a benign twin for each. After fixing, a file becomes development data; new files were requested for the next check.
 * **Independent public corpus** (labelled vulnerable/safe files from another open-source analyser, scan-only): 42/46 must-flag caught, 40/43 must-allow allowed.
-* **Stability:** 1,016 behaviour-preserving rewrites (rename, noise, wrap, alias, hoist) changed no verdict.
-* **False positives on real code:** 8.2% of 400 standard-library modules and 7.2% of 250 third-party modules, mostly genuine dual-use code (dynamic import, eval, deserialisation).
+* **Stability:** 1,163 behaviour-preserving rewrites (rename, noise, wrap, alias, hoist) changed no verdict.
+* **False positives on real code:** 8.5% of 400 standard-library modules and 7.6% of 250 third-party modules, mostly genuine dual-use code (dynamic import, eval, deserialisation).
 * **Latency:** about 2 ms median, 7 ms 95th percentile, 86% of calls under 5 ms; start-up and warm-up about 1 s; models total 1.7 MB (`docs/efficiency.md`).
 * **What did not help:** a MiniLM classifier and a hashed code classifier trained on the 500-row `expanded_dataset.jsonl` (103 distinct snippets, 52 families) plus thousands of real benign
   functions recalled only 0-33% of independent attacks, so they are not shipped; an extra public injection dataset lowered precision and was dropped.

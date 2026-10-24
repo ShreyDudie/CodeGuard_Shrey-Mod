@@ -31,8 +31,8 @@ and input caps (long files are scanned as head + tail).
 | MiniLM fine-tuned on `expanded_dataset.jsonl` | found 0 of the dev positives alone | too few distinct templates (103 snippets, 52 families); not shipped |
 | Hashed code classifier trained on `expanded_dataset.jsonl` + 6,675 real benign functions (`eval/code_lr_eval.py`) | recalls 20-33% of independent attacks on its own, 0.01 probability on the two snippets the engine missed when fresh | adds nothing to the engine; not shipped |
 
-Generalisation tests (not tuned on): fresh blind files 94-97% verdict accuracy and 75-85% exact category sets; 1,016 behaviour-preserving rewrites with 0 changes;
-independent public corpus 42/46 must-flag and 40/43 must-allow; false positives on real code 8.2% (stdlib) and 7.2% (third-party packages).
+Generalisation tests (not tuned on): fresh blind files 94-97% verdict accuracy and 75-85% exact category sets; 1,163 behaviour-preserving rewrites with 0 changes;
+independent public corpus 42/46 must-flag and 40/43 must-allow; false positives on real code 8.5% (stdlib) and 7.6% (third-party packages).
 
 ## Changes that moved the numbers in the last round
 | Change | Effect |

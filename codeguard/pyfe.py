@@ -155,6 +155,8 @@ class Interp(LibMixin, JSLibMixin):
         self.funcs: dict = {}          # name / Class.name -> FuncInfo
         self.classes: dict = {}
         self.called: set = set()       # function quals executed at least once
+        self.pending_lambdas: list = []
+        self.ran_lambdas: set = set()
         self.referenced: set = set()   # names referenced anywhere (call-graph for entry detection)
         self.stack: list = []          # function call stack (quals)
         self.mult = 1
@@ -1191,6 +1193,8 @@ class Interp(LibMixin, JSLibMixin):
 
     def e_Lambda(self, n, env):
         fi = FuncInfo(n, "<lambda>", None, env, "function", is_lambda=True)
+        if any(isinstance(x, ast.Call) for x in ast.walk(n.body)):
+            self.pending_lambdas.append(fi)         # run later if nothing ever calls it
         return V(kind="func", fn=fi, lines=frozenset({n.lineno}))
 
     def e_Await(self, n, env):
@@ -1707,6 +1711,29 @@ class Interp(LibMixin, JSLibMixin):
                     raise
                 except Exception:
                     pass
+        self._run_unexecuted_closures(seen_func)
+
+    def _run_unexecuted_closures(self, seen_func: set) -> None:
+        """Closures, decorator wrappers and lambdas that were defined but never executed (a decorator's inner function, a callback handed to something unknown) still
+        hold behaviour.  Run each once with unknown (not user-controlled) arguments; running a wrapper can define further inner functions, so repeat a few rounds."""
+        for _ in range(3):
+            todo = [fi for qual, fi in list(self.funcs.items()) if fi.cls is None and qual not in self.called and qual not in seen_func]
+            lam = [fi for fi in getattr(self, "pending_lambdas", []) if id(fi.node) not in self.ran_lambdas]
+            if not todo and not lam:
+                return
+            for fi in todo + lam:
+                self.ctx.tick(5)
+                try:
+                    seen_func.add(fi.qual)
+                    if fi.is_lambda:
+                        self.ran_lambdas.add(id(fi.node))
+                    self.call_user(fi, [], {}, fi.node, symbolic=False)
+                except Stop:
+                    raise
+                except RecursionError:
+                    self.ctx.notes.append("recursion limit (closure)")
+                except Exception as e:
+                    self.ctx.notes.append(f"closure {getattr(fi, 'name', '?')} failed: {type(e).__name__}")
 
     def _class_instantiated(self, name: str) -> bool:
         return (name + ".__init__") in self.called
@@ -1811,6 +1838,9 @@ def repair_flat_indent(text: str) -> Optional[str]:
     prev_open = False
     prev_term = False
     prev_blank = True
+    prev_deco = False
+    deco_level = 0
+    defined: set = set()
     for raw in lines:
         s = raw.strip()
         if not s:
@@ -1818,12 +1848,19 @@ def repair_flat_indent(text: str) -> Optional[str]:
             prev_blank = True
             continue
         first = s.split("(")[0].split(":")[0].split(" ")[0]
+        m_def = re.match(r"(?:async\s+)?(?:def|class)\s+([A-Za-z_]\w*)", s)
+        calls_defined = bool(defined and not prev_open and re.match(r"(?:" + "|".join(map(re.escape, defined)) + r")\s*[(.]", s))     # `main()` / `Runner().run(x)`: a module-level call of something defined above
+        if m_def:
+            defined.add(m_def.group(1))
         if prev_open:
             level = level + 1
         elif prev_term:
             level = max(level - 1, 0)
         if has_one and not raw.startswith(" ") and not prev_open:
             level = 0                    # flush-left among 1-space lines: the original had this at top level
+            openers = []
+        if calls_defined:
+            level = 0
             openers = []
         if s.startswith(_DEDENT_KW) or first in ("else", "try", "except", "finally"):
             if s.startswith(_DEDENT_KW):
@@ -1833,7 +1870,9 @@ def repair_flat_indent(text: str) -> Optional[str]:
                         del openers[k + 1:]
                         break
         elif s.startswith(("def ", "class ", "async def ", "@")):
-            if not prev_open:
+            if prev_deco and not prev_open:
+                level = deco_level                 # the def under a decorator stays at the decorator's level
+            elif not prev_open:
                 cls_levels = [lv for kw, lv in openers if kw == "class"]
                 level = (cls_levels[-1] + 1) if cls_levels and not prev_blank and False else (cls_levels[-1] + 1 if cls_levels else 0)
         elif prev_blank and s.startswith(("import ", "from ")) and not prev_open:
@@ -1841,6 +1880,8 @@ def repair_flat_indent(text: str) -> Optional[str]:
         elif s.startswith("if __name__"):
             level = 0
         out.append("    " * level + s)
+        prev_deco = s.startswith("@")
+        deco_level = level
         kw = s.split(" ")[0].split(":")[0].split("(")[0]
         is_open = s.endswith(":") and not s.startswith("#")
         if is_open:
@@ -1849,6 +1890,95 @@ def repair_flat_indent(text: str) -> Optional[str]:
         prev_term = kw in _TERMINAL and not is_open
         prev_blank = False
     return "\n".join(out)
+
+
+_BLOCK_KW_FOR_ELSE = ("if", "elif", "try", "except", "for", "while", "with", "else")
+
+
+def _reindent(text: str, *, blank_ends: bool, terminal_ends: bool, single: bool, nest_all: bool, call_top: bool = False) -> Optional[str]:
+    """One reading of flattened code.  Flat code is ambiguous (where does a body end?), so several policies exist:
+    blank_ends    a blank line ends every open body (back to class level / top level);
+    terminal_ends return / raise / break / continue end the body they are in;
+    single        every block body is exactly one statement;
+    nest_all      bodies run to the end of the text (only else/elif/except/finally and top-level markers dedent);
+    call_top      a line that starts with the name of a function or class defined earlier (`main()`, `Runner().run(x)`) is a module-level call.
+    A decorator keeps the next def at its own level; else/elif/except/finally return to their opener."""
+    lines = text.replace("\t", " ").split("\n")
+    if not any(l.strip().endswith(":") for l in lines):
+        return None
+    if max((len(l) - len(l.lstrip(" ")) for l in lines if l.strip()), default=0) > 1:
+        return None
+    out: list = []
+    defined: set = set()
+    openers: list = []                       # (keyword, level of the opener line)
+    prev_level, prev_open, prev_term, prev_blank, prev_deco = 0, False, False, True, False
+    body_first = False                       # the previous line was the first statement of a body (for `single`)
+    for raw in lines:
+        s = raw.strip()
+        if not s:
+            out.append("")
+            prev_blank = True
+            continue
+        kw = s.split(" ")[0].split(":")[0].split("(")[0]
+        is_def = s.startswith(("def ", "class ", "async def ", "@"))
+        m_def = re.match(r"(?:async\s+)?(?:def|class)\s+([A-Za-z_]\w*)", s)
+        calls_defined = bool(call_top and defined and not prev_open and not prev_deco and re.match(r"(?:" + "|".join(map(re.escape, defined)) + r")\s*[(.]", s))
+        if m_def:
+            defined.add(m_def.group(1))
+        if prev_open:
+            level = prev_level + 1
+        elif prev_deco:
+            level = prev_level
+        else:
+            level = prev_level
+            if single and body_first:
+                level = max(prev_level - 1, 0)
+            elif prev_term and terminal_ends:
+                level = max(prev_level - 1, 0)
+            if blank_ends and prev_blank and openers:
+                cls = [lv for k, lv in openers if k == "class"]
+                level = (cls[-1] + 1) if (cls and is_def) else 0
+        if kw in ("else", "elif", "except", "finally"):
+            for k in range(len(openers) - 1, -1, -1):
+                if openers[k][0] in _BLOCK_KW_FOR_ELSE and openers[k][1] <= level:
+                    level = openers[k][1]
+                    break
+        elif is_def and not prev_open and not prev_deco and not nest_all:
+            cls = [lv for k, lv in openers if k == "class"]
+            level = (cls[-1] + 1) if cls else 0
+        elif s.startswith("if __name__") or calls_defined:
+            level = 0
+        while openers and openers[-1][1] >= level and not (kw in ("else", "elif", "except", "finally") and openers[-1][1] == level and False):
+            openers.pop()
+        out.append("    " * level + s)
+        is_open = s.endswith(":") and not s.startswith("#")
+        body_first = bool(prev_open) and not is_open
+        if is_open:
+            openers.append((kw, level))
+        prev_open, prev_term = is_open, (kw in _TERMINAL and not is_open)
+        prev_deco = s.startswith("@")
+        prev_level, prev_blank = level, False
+    return "\n".join(out)
+
+
+def flat_indent_candidates(text: str) -> list:
+    """Alternative readings of flattened code that parse as Python (the analyser keeps the union of what they find)."""
+    seen: set = set()
+    res: list = []
+    for kw in (dict(blank_ends=True, terminal_ends=True, single=False, nest_all=False, call_top=True),
+               dict(blank_ends=False, terminal_ends=False, single=False, nest_all=True),
+               dict(blank_ends=False, terminal_ends=True, single=False, nest_all=False, call_top=True),
+               dict(blank_ends=False, terminal_ends=False, single=True, nest_all=False, call_top=True),
+               dict(blank_ends=False, terminal_ends=False, single=False, nest_all=True, call_top=True)):
+        try:
+            cand = _reindent(text, **kw)
+            if cand and cand not in seen:
+                seen.add(cand)
+                ast.parse(cand)
+                res.append(cand)
+        except (SyntaxError, ValueError, RecursionError):
+            continue
+    return res
 
 
 def parse_python(text: str):
@@ -1867,6 +1997,11 @@ def parse_python(text: str):
             return ast.parse(fixed), fixed
         except SyntaxError:
             pass
+    for cand in flat_indent_candidates(text):
+        try:
+            return ast.parse(cand), cand
+        except (SyntaxError, ValueError, RecursionError):
+            continue
     # strip shell prompt markers / markdown fences
     cleaned = re.sub(r"^\s*(>>>|\.\.\.) ?", "", text, flags=re.M)
     try:
@@ -1998,4 +2133,37 @@ def analyze_python_text(text: str, ctx: Ctx, hole_labels: frozenset = EMPTY, hol
             scan_motifs(tree, ctx, src)
     except Exception as e:
         ctx.notes.append(f"structural checks failed: {type(e).__name__}")
+    if not nested and len(text) < 60_000:
+        _merge_flat_readings(text, src, ctx, hole_labels, hole_src)
     return True
+
+
+def _merge_flat_readings(text: str, src: str, ctx: Ctx, hole_labels, hole_src) -> None:
+    """Flattened code (no usable indentation) has no single correct block structure.  The primary reading has been analysed; analyse the other plausible
+    readings too and keep any behaviour they add, so a body that the primary reading attached to the wrong block is still seen."""
+    try:
+        ast.parse(text)
+        return                                   # real, parseable indentation: nothing to guess
+    except (SyntaxError, ValueError, RecursionError):
+        pass
+    have = {(e.cap, e.line, e.name, str(e.target)) for e in ctx.events}
+    for cand in flat_indent_candidates(text):
+        if cand == src:
+            continue
+        alt = Ctx()
+        alt.line_base = getattr(ctx, "line_base", 0)
+        try:
+            analyze_python_text(cand, alt, hole_labels, hole_src, nested=True)
+        except Exception:
+            continue
+        added = 0
+        for e in alt.events:
+            key = (e.cap, e.line, e.name, str(e.target))
+            if e.cap == "LOOP" and "recursion" in e.flags:
+                continue                         # a call placed inside its own function by a wrong reading is not evidence of a runaway recursion
+            if key not in have:
+                have.add(key)
+                ctx.events.append(e)
+                added += 1
+        if added:
+            ctx.notes.append(f"flat-indent reading added {added} event(s)")

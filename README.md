@@ -146,8 +146,8 @@ Public dev sample (42 rows), plus honest generalisation numbers. The dev sample 
 | Latency (warm) | ~2 ms median, 7 ms p95 per snippet (`reports/dev_report.json`, `docs/efficiency.md`) |
 | Fresh blind files (predictions saved before expected outputs were read) | 94-97% verdict accuracy, 75-85% exact category sets |
 | Independent public corpus (`mevichitra/codeguard`, Apache-2.0, scan-only) | 42/46 must-flag caught, 40/43 must-allow allowed |
-| Real library code blocked | 8.2% stdlib (400 modules), 7.2% third-party (250 modules), mostly genuine dual-use code |
-| Metamorphic rewrites (`tests/test_metamorphic.py`) | 1,016 rewrites, 0 changes in verdict or categories |
+| Real library code blocked | 8.5% stdlib (400 modules), 7.6% third-party (250 modules), mostly genuine dual-use code |
+| Metamorphic rewrites (`tests/test_metamorphic.py`) | 1,163 rewrites, 0 changes in verdict or categories |
 
 Extra checks: benign look-alike fixtures (`tests/cases_benign.py`), robustness inputs (`tests/test_robustness.py`), rename/noise stability on dev (`eval/robustness.py`). `workflow.md` has the run-book, the checklist and the judge presentation.
 
@@ -204,7 +204,7 @@ The organiser's public dev sample (`codeguard_dev.jsonl`) and several blind-test
 
 - Put the organiser's file at `./codeguard_dev.jsonl` (and a copy at `data/dev.jsonl`) to run `python eval/run_eval.py codeguard_dev.jsonl`.
 - The evaluation scripts skip any test file that is missing.
-- `python tests/run_cases.py` (170 cases) needs no external data.
+- `python tests/run_cases.py` (203 cases) needs no external data.
 
 ## Interception proof
 

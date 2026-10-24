@@ -10,7 +10,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 from codeguard import pipeline  # noqa: E402
 
-MODULES = ["cases_benign", "cases_patterns", "cases_semantic", "cases_blind_fixes", "cases_polyglot", "cases_multilang"]
+MODULES = ["cases_benign", "cases_patterns", "cases_semantic", "cases_blind_fixes", "cases_polyglot", "cases_multilang", "cases_flat"]
 
 
 def load():
