@@ -152,6 +152,15 @@ def metrics():
         return {"counts": dict(_counts), "latency_ms": {"p50": pct(0.5), "p95": pct(0.95), "p99": pct(0.99), "n": len(lat)}}
 
 
+@app.post("/demo/intercept")
+def demo_intercept():
+    """The interception proof as data for the UI.  Runs only the fixed harmless demo pair (see codeguard/demo_gate.py); never executes request data."""
+    from . import demo_gate
+    if not demo_gate.enabled():
+        return JSONResponse({"error": "the interception demo is disabled (CODEGUARD_DEMO=0)"}, status_code=404)
+    return demo_gate.run_interception_demo()
+
+
 @app.post("/admin/reload")
 def reload_rules():
     return {"rules": engine.reload_rules()}

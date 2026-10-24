@@ -61,7 +61,7 @@ It sends probe snippets, validates every response against the fixed schema (also
 | 3 | Block case | scan `rm -rf /` | `block`, `destructive_command`, language `bash` |
 | 4 | Garbage input | `curl -d '{"nope":1}'` and `curl -d 'not json'` | valid schema body, no 500 |
 | 5 | Batch | `POST /batch` with two items | two results in order |
-| 6 | Interception | `python demo/intercept_check.py` | `INTERCEPTION PROOF: PASS` |
+| 6 | Interception | `python demo/intercept_check.py`, and the UI tab `/#gate` | `INTERCEPTION PROOF: PASS` (both) |
 | 7 | Regression | `python tests/run_cases.py` | `203/203 ok  FP=0 FN=0` |
 | 8 | Robustness | `python tests/test_robustness.py` | `robustness ok` |
 | 9 | Schema | `python tests/test_schema.py` | `0 problems` |
@@ -152,7 +152,7 @@ dangerous calls only record what they would do. Rules are data in YAML and ask *
 **3. Show the layers (45 s).** Point at the response's evidence (`?verbose=1`): rule hits, per-category scores, the lines. Mention the two small models we trained (1.7 MB total):
 an obfuscation signal and an instruction-text classifier for prompt injection hidden in comments.
 
-**4. Interception proof (60 s). This is a floor, rehearse it.** Run `python demo/intercept_check.py` and narrate the three steps: the safe snippet is scanned and runs (a marker file appears);
+**4. Interception proof (60 s). This is a floor, rehearse it.** In the browser UI open the **Interception proof** tab (or go to `http://127.0.0.1:8000/#gate`, which runs it automatically): it draws snippet -> guard -> decision -> marker file for the safe snippet, the unsafe snippet and the `@guarded` function, ending in a green PASS banner. The terminal version is below.  Run `python demo/intercept_check.py` and narrate the three steps: the safe snippet is scanned and runs (a marker file appears);
 the unsafe snippet is scanned and blocked, and its marker file never appears; a decorated agent function is gated and its body is never entered. End on the line
 `INTERCEPTION PROOF: PASS - blocked code never executed`. If the organizer gives a pair, run it with `--safe` and `--unsafe`.
 
@@ -191,6 +191,8 @@ category sets, and we fixed what they exposed. On real library code we block abo
 python tests/run_cases.py                       # 203 regression cases with benign twins
 python eval/benchmark.py --compare reports/baseline_v7   # every labelled set vs the saved baseline
 python tests/test_metamorphic.py                # behaviour-preserving rewrites
+python tests/test_pdf_extract.py                # a file of snippets (also after a PDF's line wrapping) gives one result per snippet
+python tests/test_demo_gate.py                  # the UI's interception proof matches the CLI proof
 python tests/stdlib_fp.py --models              # false positives on real standard-library code
 python eval/code_lr_eval.py                     # does a trained code classifier add anything? (it does not; not shipped)
 ```

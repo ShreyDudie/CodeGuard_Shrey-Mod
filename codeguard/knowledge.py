@@ -567,8 +567,20 @@ def package_reputation(name: str, eco: str = "pypi") -> tuple[str, str]:
         stem = re.sub(r"-(fix|hotfix|patch|secure|free|pro|crypto|miner|updater|dev-tools)$", "", n)
         if len(stem) >= 5 and stem in targets:
             return "TYPOSQUAT", stem
+    # combosquatting: the name of a very popular package followed only by 'trust' words (requests-v2-auth, numpy-official, flask-secure-login)
+    toks = [t for t in re.split(r"[-]+", n) if t]
+    if len(toks) >= 2 and toks[0] in targets and _RANK.get(eco, {}).get(toks[0], 10 ** 9) < 1500 and len(toks[0]) >= 4:
+        rest = toks[1:]
+        if all(t in _COMBO_WORDS or re.fullmatch(r"v?\d+", t) for t in rest) and any(t in _COMBO_STRONG or re.fullmatch(r"v\d+", t) for t in rest):
+            return "TYPOSQUAT", toks[0]
     return "UNKNOWN", ""
 
+
+# words squatters add to a popular name to look official; ordinary plugin names (pytest-cov, flask-cors, django-filter) use other words and are not touched
+_COMBO_WORDS = frozenset({"v2", "v3", "v4", "new", "official", "secure", "security", "auth", "authentication", "login", "oauth", "pro", "plus", "free", "crypto", "helper", "helpers",
+                          "update", "updater", "fix", "hotfix", "patch", "mirror", "latest", "premium", "enterprise", "beta", "lite", "extra", "extended", "improved", "fast", "faster", "real", "original"})
+
+_COMBO_STRONG = frozenset({"v2", "v3", "v4", "new", "official", "pro", "plus", "free", "latest", "premium", "original", "real", "mirror", "updater", "hotfix", "fix", "patch"})
 
 _PKG_SPEC = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._\-]*(?:\[[^\]]*\])?)\s*(?:(===|==|~=|!=|<=|>=|<|>|@)\s*(.*))?$")
 

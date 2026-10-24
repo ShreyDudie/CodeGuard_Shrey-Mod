@@ -207,6 +207,8 @@ The organiser's public dev sample (`codeguard_dev.jsonl`) and several blind-test
 - `python tests/run_cases.py` (203 cases) needs no external data.
 
 ## Interception proof
+The browser UI has an **Interception proof** tab (`/#gate` opens it and runs it): it draws the pipeline snippet -> guard -> decision -> marker file for the safe snippet, the unsafe snippet and a `@guarded` function, using `POST /demo/intercept`. That endpoint runs only the fixed harmless files in `demo/` and never executes request data; set `CODEGUARD_DEMO=0` to turn it off. Every scan in the UI also shows a small "guard gate" strip (allowed to run / blocked) - nothing pasted is ever executed.
+
 
 `python demo/intercept_check.py` does three things:
 

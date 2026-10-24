@@ -72,6 +72,33 @@
   .idx { width:34px; text-align:right; color:var(--mut); font-weight:700; padding-top:10px; flex:none; }
   pre.json { flex:1; margin:0; background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--ok); border-radius:8px; padding:10px 12px; font:13px/1.5 ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-word; }
   .item.block pre.json { border-left-color:var(--bad); }
+
+  /* ---- guard gating, drawn as a pipeline: snippet -> guard -> outcome -> marker file */
+  .lane { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:12px 0; }
+  .lane h3 { margin:0 0 8px; font-size:15px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .flow { display:grid; grid-template-columns:minmax(0,1.25fr) 26px minmax(0,1fr) 26px minmax(0,1fr) 26px minmax(0,1fr); gap:0; align-items:stretch; }
+  .arrow { display:grid; place-items:center; color:var(--mut); font-size:20px; opacity:.35; transition:opacity .4s, color .4s; }
+  .arrow.on { opacity:1; color:var(--acc); }
+  .stage { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 11px; font-size:13px; opacity:.28; transform:translateY(4px); transition:opacity .45s, transform .45s, border-color .45s, background .45s; min-width:0; }
+  .stage.on { opacity:1; transform:none; }
+  .stage .t { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin-bottom:5px; font-weight:700; }
+  .stage pre { margin:0; font:11.5px/1.45 ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-word; max-height:150px; overflow:auto; color:var(--fg); }
+  .stage.guard.allow.on { border-color:var(--ok); background:rgba(47,191,113,.10); }
+  .stage.guard.block.on { border-color:var(--bad); background:rgba(255,93,108,.10); }
+  .stage.guard.scanning.on { border-color:var(--acc); }
+  .big { font-size:17px; font-weight:800; margin:2px 0; } .big.ok { color:var(--ok); } .big.bad { color:var(--bad); }
+  .file { display:inline-block; max-width:100%; overflow-wrap:anywhere; font:12px ui-monospace,Consolas,monospace; padding:3px 9px; border-radius:6px; border:1px solid var(--ok); background:rgba(47,191,113,.14); color:var(--ok); }
+  .file.ghost { border:1px dashed var(--bad); background:transparent; color:var(--bad); text-decoration:line-through; opacity:.85; }
+  .counter { display:inline-block; min-width:30px; text-align:center; font:700 20px ui-monospace,Consolas,monospace; padding:1px 10px; border-radius:8px; border:1px solid var(--bad); color:var(--bad); }
+  .banner { margin:14px 0 4px; padding:12px 16px; border-radius:12px; font-weight:800; font-size:16px; border:1px solid var(--line); }
+  .banner.pass { color:var(--ok); border-color:var(--ok); background:rgba(47,191,113,.10); }
+  .banner.fail { color:var(--bad); border-color:var(--bad); background:rgba(255,93,108,.10); }
+  .dirbox { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:6px 0 0; color:var(--mut); font-size:13px; }
+  .minigate { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 4px; padding:10px 14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; font-size:14px; }
+  .minigate .pill { padding:3px 12px; border-radius:99px; border:1px solid var(--line); background:var(--panel2); font-weight:700; font-size:13px; }
+  .minigate .pill.ok { border-color:var(--ok); color:var(--ok); } .minigate .pill.bad { border-color:var(--bad); color:var(--bad); }
+  .minigate small { color:var(--mut); }
+  @media (max-width:760px) { .flow { grid-template-columns:1fr; gap:6px; } .arrow { transform:rotate(90deg); height:16px; } }
 </style>
 </head>
 <body>
@@ -82,6 +109,7 @@
   <div class="tabs">
     <button class="tab on" id="tabOne">One snippet</button>
     <button class="tab" id="tabFile">File of snippets</button>
+    <button class="tab" id="tabGate">Interception proof</button>
   </div>
 
   <div class="panel" id="paneOne">
@@ -97,6 +125,14 @@
   <div class="panel hidden" id="paneFile">
     <div class="drop" id="drop">Drop a file here, or click to choose<br><span class="hint">.jsonl / .json / .txt / .pdf with {"code": "..."} objects (one after another is fine), .csv with a "code" column, or any code file</span></div>
     <input type="file" id="file" class="hidden">
+  </div>
+
+  <div class="panel hidden" id="paneGate">
+    <p style="margin:0 0 6px"><b>Does a blocked verdict really stop execution?</b> This runs the project's fixed demo pair through the guard, in a temporary folder, and shows what happened.
+      The safe snippet writes a marker file <i>only if it runs</i>; the unsafe snippet would write a different marker, so that file existing would prove it ran.</p>
+    <p class="hint" style="margin:0 0 10px">Only the harmless files <code>demo/safe_snippet.py</code> (runs) and <code>demo/unsafe_snippet.py</code> (scanned, never executed) are involved. Text you paste on the other tabs is never executed.</p>
+    <div class="row" style="margin-top:0"><button class="primary" id="runGate">Run the interception proof</button><span class="hint" id="gateHint"></span></div>
+    <div id="gateOut"></div>
   </div>
 
   <div id="status"></div>
@@ -122,11 +158,80 @@ function showError(e) {
 function setBusy(msg) { $('#status').innerHTML = '<p class="hint"><span class="spinner"></span>' + esc(msg) + '</p>'; }
 
 function tab(which) {
-  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file');
-  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file');
+  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file'); $('#tabGate').classList.toggle('on', which === 'gate');
+  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file'); $('#paneGate').classList.toggle('hidden', which !== 'gate');
+  $('#status').innerHTML = ''; $('#results').classList.toggle('hidden', which === 'gate');
 }
 $('#tabOne').onclick = () => tab('one');
 $('#tabFile').onclick = () => tab('file');
+$('#tabGate').onclick = () => tab('gate');
+
+/* ---------------- interception proof: draw what the guard did, step by step ---------------- */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function lane(step, i) {
+  const blocked = step.gate === 'blocked';
+  const scan = step.scan;
+  const codeHtml = step.code ? '<pre>' + esc(step.code) + '</pre>' : '<pre>@guarded\ndef run_agent_step(code, dir):\n    entered += 1   # only if the body runs\n    exec(code)\n\nrun_agent_step(unsafe_code, dir)</pre>';
+  const verdict = scan ? (scan.verdict === 'block' ? 'BLOCK' : 'ALLOW') : (blocked ? 'BLOCK' : 'ALLOW');
+  const ms = scan ? scan.latency_ms : step.latency_ms;
+  const cats = scan && scan.categories.length ? '<div class="hint" style="margin:4px 0 0">' + esc(scan.categories.join(', ')) + '</div>' : '';
+  const outcome = blocked
+    ? '<div class="big bad">BLOCKED</div><div>GuardBlocked raised.<br><b>Never executed.</b></div>'
+    : '<div class="big ok">ALLOWED</div><div>The guard lets it through.<br><b>It runs.</b></div>';
+  let last;
+  if (step.id === 'decorated') {
+    last = '<div class="t">What the function body did</div><div>body entered: <span class="counter" id="cnt' + i + '">' + step.body_entered + '</span></div>' +
+      '<div style="margin-top:8px"><span class="file ghost">' + esc(step.marker.name) + '</span></div><div class="hint">absent: nothing ran</div>';
+  } else if (step.marker.exists) {
+    last = '<div class="t">Temporary marker folder</div><span class="file">' + esc(step.marker.name) + '</span><div class="hint">appeared: the code really ran</div>';
+  } else {
+    last = '<div class="t">Temporary marker folder</div><span class="file ghost">' + esc(step.marker.name) + '</span><div class="hint">absent: the code never ran</div>';
+  }
+  const why = step.would_have && step.would_have.length ? '<div class="hint" style="margin-top:8px"><b>What it would have done (nothing was run):</b> ' + esc(step.would_have.join('; ')) + '.</div>' : '';
+  return '<div class="lane" id="lane' + i + '"><h3>' + (i + 1) + '. ' + esc(step.title) + '</h3><div class="flow">' +
+    '<div class="stage s0"><div class="t">Code handed to the agent</div>' + codeHtml + '</div><div class="arrow a0">&#10132;</div>' +
+    '<div class="stage guard s1 scanning"><div class="t">CodeGuard (scan before run)</div><div class="gv"><span class="spinner"></span>scanning ...</div></div><div class="arrow a1">&#10132;</div>' +
+    '<div class="stage s2"><div class="t">Decision</div>' + outcome + '</div><div class="arrow a2">&#10132;</div>' +
+    '<div class="stage s3"><div class="t">Observable side effect</div>' + last + '</div></div>' + why + '</div>' +
+    '<script type="application/json" id="gv' + i + '">' + JSON.stringify({ verdict: verdict, ms: ms, cats: cats, blocked: blocked }).replace(/</g, '\\u003c') + '</' + 'script>';
+}
+async function runGate() {
+  const btn = $('#runGate');
+  btn.disabled = true; $('#gateHint').innerHTML = '<span class="spinner"></span>running the demo pair ...'; $('#gateOut').innerHTML = '';
+  let d;
+  try {
+    const r = await fetch('/demo/intercept', { method: 'POST' });
+    if (!r.ok) throw new Error(r.status === 404 ? 'the interception demo is disabled on this server (CODEGUARD_DEMO=0), or the server is an older version: restart it' : 'server returned ' + r.status);
+    d = await r.json();
+  } catch (e) { btn.disabled = false; $('#gateHint').textContent = ''; showError(e); return; }
+  $('#gateHint').textContent = '';
+  $('#gateOut').innerHTML = '<div class="dirbox">marker folder before: <span class="file ghost" style="text-decoration:none;border-color:var(--line);color:var(--mut)">' +
+    (d.marker_dir_before.length ? esc(d.marker_dir_before.join(', ')) : 'empty') + '</span></div>' + d.steps.map(lane).join('') + '<div id="gateEnd"></div>';
+  for (let i = 0; i < d.steps.length; i++) {
+    const L = $('#lane' + i), g = JSON.parse($('#gv' + i).textContent), st = L.querySelectorAll('.stage'), ar = L.querySelectorAll('.arrow');
+    st[0].classList.add('on'); await sleep(450); ar[0].classList.add('on');
+    st[1].classList.add('on'); await sleep(750);
+    const gs = st[1]; gs.classList.remove('scanning'); gs.classList.add(g.blocked ? 'block' : 'allow');
+    gs.querySelector('.gv').innerHTML = '<div class="big ' + (g.blocked ? 'bad' : 'ok') + '">' + g.verdict + '</div><div class="hint" style="margin:0">' + esc(g.ms) + ' ms</div>' + g.cats;
+    await sleep(550); ar[1].classList.add('on'); st[2].classList.add('on'); await sleep(650);
+    ar[2].classList.add('on'); st[3].classList.add('on'); await sleep(600);
+  }
+  $('#gateEnd').innerHTML = '<div class="dirbox">marker folder after: <span class="file" style="' + (d.marker_dir_after.length ? '' : 'display:none') + '">' + esc(d.marker_dir_after.join(', ')) + '</span>' +
+    (d.marker_dir_after.length ? '' : 'empty') + ' <span class="hint">(only the safe snippet left a file; the unsafe marker never appeared)</span></div>' +
+    '<div class="banner ' + (d.pass ? 'pass' : 'fail') + '">' + (d.pass ? '&#10003; ' : '&#10007; ') + esc(d.summary) + '</div>';
+  btn.disabled = false; btn.textContent = 'Run it again';
+}
+$('#runGate').onclick = () => runGate();
+if (location.hash === '#gate') { tab('gate'); runGate(); }
+if (/^#ex-(safe|meta|ai)$/.test(location.hash)) { $('#code').value = EX[location.hash.slice(4)]; scanOne().catch(showError); }            // /#gate opens the proof and runs it (handy for the live demo)
+
+function gateStrip(x) {
+  const blocked = x.verdict === 'block';
+  const ms = x.explanation && x.explanation.analysis_ms !== undefined ? x.explanation.analysis_ms + ' ms' : '';
+  return '<div class="minigate"><b>Guard gate</b><span class="pill">code</span><span style="color:var(--mut)">&#10132;</span><span class="pill">CodeGuard ' + esc(ms) + '</span><span style="color:var(--mut)">&#10132;</span>' +
+    (blocked ? '<span class="pill bad">BLOCKED: execution prevented</span>' : '<span class="pill ok">ALLOWED to run</span>') +
+    '<small>' + (blocked ? 'a guarded runner would raise GuardBlocked and never start this code' : 'a guarded runner would execute it') + '. Nothing is executed on this page.</small></div>';
+}
 document.querySelectorAll('[data-ex]').forEach((b) => { b.onclick = () => { $('#code').value = EX[b.dataset.ex]; scanOne().catch(showError); }; });
 $('#go').onclick = () => scanOne().catch(showError);
 
@@ -182,6 +287,7 @@ function render(single) {
     h += '<div class="summary"><b>' + ALL.length + '</b> snippets scanned &middot; <span class="v-block"><b>' + blocked + '</b> block</span> &middot; <span class="v-allow"><b>' + (ALL.length - blocked) + '</b> allow</span>' +
       '<span class="grow"></span><button id="cpall">Copy all</button><button id="dlj">Download .jsonl</button></div>';
   }
+  if (single && ALL.length === 1) { h += gateStrip(ALL[0]); }
   h += ALL.map((x) => '<div class="item ' + x.verdict + '"><div class="idx">#' + x.index + '</div><pre class="json">' + prettyJson(ordered(x)) + '</pre></div>').join('');
   $('#results').innerHTML = h;
   if ($('#dlj')) { $('#dlj').onclick = downloadJsonl; }
