@@ -515,7 +515,7 @@ async function scanFile(file) {
 }
 
 function ordered(x) {
-  return { verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines, latency_ms: x.latency_ms };
+  return { idx: x.idx, verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines, latency_ms: x.latency_ms };
 }
 function prettyJson(o) {
   const q = (v) => esc(JSON.stringify(v));
@@ -547,7 +547,7 @@ function render(single) {
 }
 
 function strict(x) {
-  return { verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines, latency_ms: x.latency_ms };
+  return { idx: x.idx, verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines, latency_ms: x.latency_ms };
 }
 function save(name, mime, text) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
@@ -555,8 +555,8 @@ function save(name, mime, text) {
 function downloadJsonl() { save(SOURCE + '_results.jsonl', 'application/x-ndjson', ALL.map((x) => JSON.stringify(strict(x))).join('\n') + '\n'); }
 function downloadCsv() {
   const cell = (v) => '"' + String(v).replace(/"/g, '""') + '"';
-  const head = ['index', 'verdict', 'risk_score', 'categories', 'code_language', 'vulnerable_lines', 'latency_ms', 'reason'];
-  const rows = ALL.map((x) => [x.index, x.verdict, x.risk_score, x.categories.join('|'), x.code_language, x.vulnerable_lines.join('|'), x.latency_ms, x.reason].map(cell).join(','));
+  const head = ['idx', 'verdict', 'risk_score', 'categories', 'code_language', 'vulnerable_lines', 'latency_ms', 'reason'];
+  const rows = ALL.map((x) => [x.idx, x.verdict, x.risk_score, x.categories.join('|'), x.code_language, x.vulnerable_lines.join('|'), x.latency_ms, x.reason].map(cell).join(','));
   save(SOURCE + '_results.csv', 'text/csv', head.join(',') + '\n' + rows.join('\n') + '\n');
 }
 </script>

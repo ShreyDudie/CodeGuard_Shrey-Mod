@@ -71,7 +71,7 @@ async def _read_body(request: Request) -> Any:
             return ""
 
 
-def _scan_one(code: str, verbose: bool, ident=None, source: str = "") -> dict:
+def _scan_one(code: str, verbose: bool, ident=None, source: str = "", idx=None) -> dict:
     t0 = time.perf_counter()
     try:
         res = pipeline.scan(code, verbose=verbose)
@@ -86,7 +86,10 @@ def _scan_one(code: str, verbose: bool, ident=None, source: str = "") -> dict:
         _counts["scan"] += 1
         _counts[res.get("verdict", "block")] = _counts.get(res.get("verdict", "block"), 0) + 1
     predlog.record(ident, code, res, source or ("ui" if verbose else "api"), dt)        # kept in memory so the answer key can be scored later
-    res = dict(res)
+    if idx is None:
+        with _stats_lock:
+            idx = _counts["scan"]                                                       # single request: its arrival number on this server
+    res = {"idx": idx, **res}                                                           # extra output column: position of the snippet (1-based within a batch / file)
     res["latency_ms"] = round(dt, 2)                                                    # extra output column: time this request took inside the service
     return res
 
@@ -106,7 +109,8 @@ async def scan_endpoint(request: Request, verbose: int = 0, demo: int = 0):
     if isinstance(body, dict) and "verbose" in body:
         verbose = int(bool(body.get("verbose")))
     ident = body.get("id") if isinstance(body, dict) else None
-    res = _scan_one(code, bool(verbose), ident, "demo" if demo else "")
+    given = body.get("idx", body.get("index")) if isinstance(body, dict) else None
+    res = _scan_one(code, bool(verbose), ident, "demo" if demo else "", given)
     return JSONResponse(res)
 
 
@@ -127,9 +131,10 @@ async def batch_endpoint(request: Request, verbose: int = 0):
         else:
             items = [body]
     out = []
-    for it in items:
+    for n, it in enumerate(items, start=1):
         code = _extract_code(it)
-        res = _scan_one(code, bool(verbose), it.get("id") if isinstance(it, dict) else None)
+        given = it.get("idx", it.get("index")) if isinstance(it, dict) else None
+        res = _scan_one(code, bool(verbose), it.get("id") if isinstance(it, dict) else None, "", n if given is None else given)
         if isinstance(it, dict) and it.get("id") is not None:
             res = {"id": it["id"], **res}
         out.append(res)
@@ -145,7 +150,7 @@ async def batch_file_endpoint(request: Request, filename: str = ""):
     items = extract_from_bytes(await request.body(), filename)[:2000]
     results = []
     for i, (ident, code) in enumerate(items, start=1):
-        res = _scan_one(code, True, ident, "ui-file")
+        res = _scan_one(code, True, ident, "ui-file", i)
         results.append({"index": i, "id": ident, "code": code[:40000], **res})
     blocked = sum(1 for r in results if r["verdict"] == "block")
     return JSONResponse({"count": len(results), "blocked": blocked, "allowed": len(results) - blocked, "results": results})
