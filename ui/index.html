@@ -471,7 +471,7 @@ if (location.hash === '#score-sample') { tab('file'); $('#scoreBox').open = true
 
 function gateStrip(x) {
   const blocked = x.verdict === 'block';
-  const ms = x.explanation && x.explanation.analysis_ms !== undefined ? x.explanation.analysis_ms + ' ms' : '';
+  const ms = x.latency_ms !== undefined ? x.latency_ms + ' ms' : (x.explanation && x.explanation.analysis_ms !== undefined ? x.explanation.analysis_ms + ' ms' : '');
   return '<div class="minigate"><b>Guard gate</b><span class="pill">code</span><span style="color:var(--mut)">&#10132;</span><span class="pill">CodeGuard ' + esc(ms) + '</span><span style="color:var(--mut)">&#10132;</span>' +
     (blocked ? '<span class="pill bad">BLOCKED: execution prevented</span>' : '<span class="pill ok">ALLOWED to run</span>') +
     '<small>' + (blocked ? 'a guarded runner would raise GuardBlocked and never start this code' : 'a guarded runner would execute it') + '. Nothing is executed on this page.</small></div>';
@@ -515,7 +515,7 @@ async function scanFile(file) {
 }
 
 function ordered(x) {
-  return { verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines };
+  return { verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines, latency_ms: x.latency_ms };
 }
 function prettyJson(o) {
   const q = (v) => esc(JSON.stringify(v));
@@ -525,7 +525,8 @@ function prettyJson(o) {
     '  "categories": ' + q(o.categories) + ',\n' +
     '  "code_language": ' + q(o.code_language) + ',\n' +
     '  "reason": ' + q(o.reason) + ',\n' +
-    '  "vulnerable_lines": ' + q(o.vulnerable_lines) + '\n}';
+    '  "vulnerable_lines": ' + q(o.vulnerable_lines) + ',\n' +
+    '  "latency_ms": ' + q(o.latency_ms) + '\n}';
 }
 function render(single) {
   const blocked = ALL.filter((x) => x.verdict === 'block').length;
@@ -546,7 +547,7 @@ function render(single) {
 }
 
 function strict(x) {
-  return { verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines };
+  return { verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines, latency_ms: x.latency_ms };
 }
 function save(name, mime, text) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
@@ -554,8 +555,8 @@ function save(name, mime, text) {
 function downloadJsonl() { save(SOURCE + '_results.jsonl', 'application/x-ndjson', ALL.map((x) => JSON.stringify(strict(x))).join('\n') + '\n'); }
 function downloadCsv() {
   const cell = (v) => '"' + String(v).replace(/"/g, '""') + '"';
-  const head = ['index', 'verdict', 'risk_score', 'categories', 'code_language', 'vulnerable_lines', 'reason'];
-  const rows = ALL.map((x) => [x.index, x.verdict, x.risk_score, x.categories.join('|'), x.code_language, x.vulnerable_lines.join('|'), x.reason].map(cell).join(','));
+  const head = ['index', 'verdict', 'risk_score', 'categories', 'code_language', 'vulnerable_lines', 'latency_ms', 'reason'];
+  const rows = ALL.map((x) => [x.index, x.verdict, x.risk_score, x.categories.join('|'), x.code_language, x.vulnerable_lines.join('|'), x.latency_ms, x.reason].map(cell).join(','));
   save(SOURCE + '_results.csv', 'text/csv', head.join(',') + '\n' + rows.join('\n') + '\n');
 }
 </script>
