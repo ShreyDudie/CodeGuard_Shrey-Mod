@@ -1,0 +1,122 @@
+# dependency_risk - installing malicious, typosquatted or untrusted packages
+- id: dep.typosquat
+  category: dependency_risk
+  weight: 0.92
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    extra_eq: {rep: TYPOSQUAT}
+  unless:
+    flags_any: [url_source, vcs_source]
+  does: "installs {pkg}, which looks like a misspelled copy of the popular package {similar}"
+  why: "attackers publish look-alike names (typosquats) hoping someone mistypes the real one"
+  would: "a package from an unknown author, possibly containing malware, would be installed"
+
+- id: dep.vcs_untrusted
+  category: dependency_risk
+  weight: 0.86
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [vcs_source, url_source]
+    hostc_any: [SUSPICIOUS, EXTERNAL_IP, DROPSITE, UNKNOWN, USER]
+  unless:
+    flags_any: [pinned]
+  does: "installs a dependency straight from {target}"
+  why: "it comes from a repository that is not a trusted registry and is not pinned to a fixed version"
+  would: "whatever code sits at that address today would be installed and run at build time"
+
+- id: dep.vcs_unpinned
+  category: dependency_risk
+  weight: 0.60
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [vcs_source, url_source]
+    hostc_any: [EXTERNAL]
+  unless:
+    flags_any: [pinned]
+    extra_eq: {trusted_host: true}
+  does: "installs a dependency from the URL {target} without pinning a version"
+  why: "branch heads and raw URLs change over time and bypass package review"
+  would: "different (possibly malicious) code could be installed on every build"
+
+- id: dep.insecure_index
+  category: dependency_risk
+  weight: 0.82
+  tags: [T1195.001, T1557]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [plain_http_index, suspicious_index]
+  does: "installs packages from an unencrypted or suspicious package index"
+  why: "packages fetched over plain http can be swapped by anyone on the network"
+  would: "tampered packages could be installed"
+
+- id: dep.trusted_host
+  category: dependency_risk
+  weight: 0.70
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [trusted_host, insecure_tls, unauthenticated]
+  does: "turns off certificate or signature checks while installing packages"
+  why: "without verification a man-in-the-middle can substitute malicious packages"
+  would: "unverified packages would be installed"
+
+- id: dep.extra_index
+  category: dependency_risk
+  weight: 0.55
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [extra_index]
+  does: "adds an extra package index next to the public one"
+  why: "extra indexes enable dependency-confusion attacks, where a malicious package with the same name wins"
+  would: "a package from the extra index could replace the intended one"
+
+- id: dep.remote_requirements
+  category: dependency_risk
+  weight: 0.72
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [remote_requirements, remote_key, custom_repo]
+  does: "installs from a requirements file, key or repository fetched from the internet"
+  why: "the list of packages can change at any time without review"
+  would: "unreviewed packages could be installed"
+
+- id: dep.dynamic_name
+  category: dependency_risk
+  weight: 0.50
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [dynamic_name]
+    tl_any: [USER, NET, FILE]
+  does: "installs a package whose name comes from outside input"
+  why: "the caller chooses what gets installed"
+  would: "any package, including malware, could be installed"
+
+- id: dep.unknown_unpinned_risky_name
+  category: dependency_risk
+  weight: 0.35
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    flags_any: [latest]
+  does: "installs the latest version of {pkg} with no pin"
+  why: "unpinned installs can silently pick up a hijacked release"
+  would: "a new unreviewed release could be installed"
+
+- id: dep.suspicious_package_name
+  category: dependency_risk
+  weight: 0.66
+  tags: [T1195.001]
+  when:
+    cap: INSTALL_PKG
+    target_re: '(unverified|untrusted|random|malicious|backdoor|stealer|keylog|exploit|payload|trojan|evil|hack|crack|cracked)'
+  unless:
+    flags_any: [pinned]
+  does: "installs {pkg}, a package whose name says it is unverified or hostile"
+  why: "nothing vouches for this package, so its author and contents are unknown"
+  would: "unreviewed code from an unknown author would be installed and could run during installation"

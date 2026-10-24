@@ -1,0 +1,259 @@
+# API semantics: maps library calls to *capabilities* (what the call does), not to verdicts.
+# t: argument positions / keyword names holding the primary target (url, path, command, package ...)
+# p: argument positions / keywords holding payload data
+# ret: provenance labels attached to the return value
+# flags: static flags added to the emitted event
+# Unknown callables are NOT in this table: they propagate taint and emit nothing.
+
+functions:
+  # ---- process execution
+  os.system:            {cap: EXEC_SHELL, t: [0, command]}
+  os.popen:             {cap: EXEC_SHELL, t: [0, cmd], ret: [CMDSUB]}
+  os.popen2:            {cap: EXEC_SHELL, t: [0]}
+  os.execv:             {cap: EXEC_PROC, t: [0]}
+  os.execve:            {cap: EXEC_PROC, t: [0]}
+  os.execl:             {cap: EXEC_PROC, t: [0]}
+  os.execlp:            {cap: EXEC_PROC, t: [0]}
+  os.execvp:            {cap: EXEC_PROC, t: [0]}
+  os.spawnl:            {cap: EXEC_PROC, t: [1]}
+  os.spawnv:            {cap: EXEC_PROC, t: [1]}
+  os.startfile:         {cap: EXEC_PROC, t: [0]}
+  commands.getoutput:   {cap: EXEC_SHELL, t: [0], ret: [CMDSUB]}
+  subprocess.getoutput: {cap: EXEC_SHELL, t: [0], ret: [CMDSUB]}
+  subprocess.getstatusoutput: {cap: EXEC_SHELL, t: [0], ret: [CMDSUB]}
+  subprocess.run:       {cap: EXEC_PROC, t: [0, args], ret: [CMDSUB]}
+  subprocess.call:      {cap: EXEC_PROC, t: [0, args]}
+  subprocess.check_call: {cap: EXEC_PROC, t: [0, args]}
+  subprocess.check_output: {cap: EXEC_PROC, t: [0, args], ret: [CMDSUB]}
+  subprocess.Popen:     {cap: EXEC_PROC, t: [0, args], ret: [CMDSUB]}
+  asyncio.create_subprocess_shell: {cap: EXEC_SHELL, t: [0]}
+  asyncio.create_subprocess_exec:  {cap: EXEC_PROC, t: [0]}
+  pty.spawn:            {cap: EXEC_PROC, t: [0]}
+  sh.Command:           {cap: EXEC_PROC, t: [0]}
+  plumbum.local:        {cap: EXEC_PROC, t: [0]}
+  fabric.api.local:     {cap: EXEC_SHELL, t: [0]}
+  fabric.api.run:       {cap: EXEC_SHELL, t: [0]}
+  fabric.api.sudo:      {cap: EXEC_SHELL, t: [0], flags: [sudo]}
+  invoke.run:           {cap: EXEC_SHELL, t: [0]}
+  pexpect.spawn:        {cap: EXEC_PROC, t: [0]}
+  pexpect.run:          {cap: EXEC_SHELL, t: [0]}
+
+  # ---- dynamic code
+  builtins.eval:        {cap: EVAL, t: [0, expression], flags: [eval]}
+  builtins.exec:        {cap: EVAL, t: [0, source], flags: [exec]}
+  builtins.compile:     {cap: EVAL, t: [0, source], flags: [compile], ret: [COMPILED]}
+  builtins.__import__:  {cap: LOAD_MODULE, t: [0, name]}
+  importlib.import_module: {cap: LOAD_MODULE, t: [0, name]}
+  importlib.__import__: {cap: LOAD_MODULE, t: [0]}
+  runpy.run_path:       {cap: EVAL, t: [0], flags: [run_path]}
+  runpy.run_module:     {cap: LOAD_MODULE, t: [0]}
+  imp.load_source:      {cap: LOAD_MODULE, t: [1]}
+  imp.load_module:      {cap: LOAD_MODULE, t: [0]}
+  ctypes.CDLL:          {cap: LOAD_MODULE, t: [0], flags: [native]}
+  ctypes.cdll.LoadLibrary: {cap: LOAD_MODULE, t: [0], flags: [native]}
+  ctypes.windll.LoadLibrary: {cap: LOAD_MODULE, t: [0], flags: [native]}
+  code.interact:        {cap: EVAL, t: [0], flags: [interactive]}
+  inspect.getsource:    {cap: NONE, ret: [DYNCODE]}
+  marshal.loads:        {cap: DESERIALIZE, t: [0], flags: [marshal]}
+  marshal.load:         {cap: DESERIALIZE, t: [0], flags: [marshal]}
+  pickle.loads:         {cap: DESERIALIZE, t: [0], flags: [pickle], ret: [DYNCODE]}
+  pickle.load:          {cap: DESERIALIZE, t: [0], flags: [pickle], ret: [DYNCODE]}
+  pickle.Unpickler:     {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  cPickle.loads:        {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  cPickle.load:         {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  _pickle.loads:        {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  dill.loads:           {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  dill.load:            {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  cloudpickle.loads:    {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  jsonpickle.decode:    {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  shelve.open:          {cap: DESERIALIZE, t: [0, filename], flags: [shelve], ret: [DYNCODE]}
+  pandas.read_pickle:   {cap: DESERIALIZE, t: [0], flags: [pickle]}
+  yaml.unsafe_load:     {cap: DESERIALIZE, t: [0], flags: [yaml_unsafe]}
+  yaml.full_load:       {cap: NONE}
+  numpy.load:           {cap: NONE}
+  torch.load:           {cap: DESERIALIZE, t: [0], flags: [torch_load]}
+  joblib.load:          {cap: DESERIALIZE, t: [0], flags: [pickle]}
+
+  # ---- network
+  requests.get:         {cap: NET_FETCH, t: [0, url], p: [params], ret: [NET]}
+  requests.head:        {cap: NET_FETCH, t: [0, url], p: [params], ret: [NET]}
+  requests.options:     {cap: NET_FETCH, t: [0, url], p: [params], ret: [NET]}
+  requests.delete:      {cap: NET_FETCH, t: [0, url], p: [params], ret: [NET]}
+  requests.post:        {cap: NET_SEND, t: [0, url], p: [1, data, json, files, params], ret: [NET]}
+  requests.put:         {cap: NET_SEND, t: [0, url], p: [1, data, json, files, params], ret: [NET]}
+  requests.patch:       {cap: NET_SEND, t: [0, url], p: [1, data, json, files, params], ret: [NET]}
+  requests.request:     {cap: NET_SEND, t: [1, url], p: [2, data, json, files, params], ret: [NET], method_arg: 0}
+  httpx.get:            {cap: NET_FETCH, t: [0, url], p: [params], ret: [NET]}
+  httpx.post:           {cap: NET_SEND, t: [0, url], p: [1, data, json, files, content, params], ret: [NET]}
+  httpx.put:            {cap: NET_SEND, t: [0, url], p: [1, data, json, files, content, params], ret: [NET]}
+  httpx.patch:          {cap: NET_SEND, t: [0, url], p: [1, data, json, files, content, params], ret: [NET]}
+  httpx.request:        {cap: NET_SEND, t: [1, url], p: [2, data, json, content], ret: [NET], method_arg: 0}
+  urllib.request.urlopen: {cap: NET_FETCH, t: [0, url], p: [1, data], ret: [NET], send_if: [1, data]}
+  urllib.request.urlretrieve: {cap: NET_FETCH, t: [0, url], ret: [NET]}
+  urllib2.urlopen:      {cap: NET_FETCH, t: [0], p: [1, data], ret: [NET], send_if: [1, data]}
+  urllib3.request:      {cap: NET_FETCH, t: [1, url], p: [body, fields], ret: [NET], method_arg: 0}
+  http.client.HTTPConnection: {cap: NET_CONNECT, t: [0, host], ret: [], mkobj: http.client.HTTPConnection}
+  http.client.HTTPSConnection: {cap: NET_CONNECT, t: [0, host], ret: [], mkobj: http.client.HTTPConnection}
+  socket.create_connection: {cap: NET_CONNECT, t: [0], mkobj: socket.socket, target_tuple: true}
+  socket.gethostbyname: {cap: DNS, t: [0], ret: []}
+  socket.gethostbyname_ex: {cap: DNS, t: [0]}
+  socket.getaddrinfo:   {cap: DNS, t: [0]}
+  dns.resolver.resolve: {cap: DNS, t: [0]}
+  dns.resolver.query:   {cap: DNS, t: [0]}
+  smtplib.SMTP:         {cap: NET_CONNECT, t: [0, host], mkobj: smtplib.SMTP}
+  smtplib.SMTP_SSL:     {cap: NET_CONNECT, t: [0, host], mkobj: smtplib.SMTP}
+  ftplib.FTP:           {cap: NET_CONNECT, t: [0, host], mkobj: ftplib.FTP}
+  telnetlib.Telnet:     {cap: NET_CONNECT, t: [0, host], mkobj: telnetlib.Telnet}
+  paramiko.SSHClient:   {cap: NONE, mkobj: paramiko.SSHClient}
+  websocket.create_connection: {cap: NET_CONNECT, t: [0], mkobj: websocket.WebSocket}
+  websockets.connect:   {cap: NET_CONNECT, t: [0], mkobj: websocket.WebSocket}
+  aiohttp.ClientSession: {cap: NONE, mkobj: requests.Session}
+  requests.Session:     {cap: NONE, mkobj: requests.Session}
+  requests.session:     {cap: NONE, mkobj: requests.Session}
+  httpx.Client:         {cap: NONE, mkobj: requests.Session}
+  httpx.AsyncClient:    {cap: NONE, mkobj: requests.Session}
+  scapy.all.send:       {cap: NET_SEND, t: [0], flags: [raw_packet]}
+  scapy.all.sr1:        {cap: NET_SEND, t: [0], flags: [raw_packet]}
+  scapy.all.sendp:      {cap: NET_SEND, t: [0], flags: [raw_packet]}
+  webbrowser.open:      {cap: NET_FETCH, t: [0]}
+  pyperclip.paste:      {cap: NONE, ret: [FILE]}
+  pyautogui.screenshot: {cap: NONE, ret: [FILE]}
+  PIL.ImageGrab.grab:   {cap: NONE, ret: [FILE]}
+
+  # ---- filesystem
+  os.remove:            {cap: DELETE, t: [0]}
+  os.unlink:            {cap: DELETE, t: [0]}
+  os.rmdir:             {cap: DELETE, t: [0]}
+  os.removedirs:        {cap: DELETE, t: [0], flags: [recursive]}
+  shutil.rmtree:        {cap: DELETE, t: [0, path], flags: [recursive]}
+  send2trash.send2trash: {cap: NONE}
+  shutil.move:          {cap: DELETE, t: [0], flags: [move], move_dst: 1}
+  os.rename:            {cap: NONE}
+  os.truncate:          {cap: DELETE, t: [0], flags: [truncate]}
+  os.chmod:             {cap: PRIV, t: [0], flags: [chmod], mode_arg: 1}
+  os.fchmod:            {cap: NONE}
+  os.chown:             {cap: PRIV, t: [0], flags: [chown]}
+  os.setuid:            {cap: PRIV, t: [0], flags: [setuid]}
+  os.setgid:            {cap: PRIV, t: [0], flags: [setuid]}
+  os.seteuid:           {cap: PRIV, t: [0], flags: [setuid]}
+  os.setegid:           {cap: PRIV, t: [0], flags: [setuid]}
+  os.setreuid:          {cap: PRIV, t: [0], flags: [setuid]}
+  os.setresuid:         {cap: PRIV, t: [0], flags: [setuid]}
+  os.chroot:            {cap: PRIV, t: [0], flags: [chroot]}
+  os.fork:              {cap: SPAWN, flags: [fork]}
+  os.forkpty:           {cap: SPAWN, flags: [fork]}
+  os.kill:              {cap: KILL, t: [0], p: [1]}
+  os.killpg:            {cap: KILL, t: [0], p: [1]}
+  os.dup2:              {cap: NONE, flags: [dup2]}
+  os.setsid:            {cap: NONE}
+  os.environ.get:       {cap: NONE}
+  os.getenv:            {cap: NONE}
+  os.putenv:            {cap: NONE}
+  os.listdir:           {cap: NONE, ret: [FILE]}
+  os.walk:              {cap: NONE, ret: [FILE]}
+  os.scandir:           {cap: NONE, ret: [FILE]}
+  glob.glob:            {cap: NONE, ret: [FILE]}
+  glob.iglob:           {cap: NONE, ret: [FILE]}
+  tempfile.mkstemp:     {cap: NONE}
+  zipfile.ZipFile:      {cap: NONE, mkobj: zipfile.ZipFile}
+  tarfile.open:         {cap: NONE, mkobj: tarfile.TarFile}
+  shutil.make_archive:  {cap: NONE, archive_of: 2}
+  getpass.getpass:      {cap: NONE, ret: [USER]}
+  getpass.getuser:      {cap: NONE}
+  input:                {cap: NONE, ret: [USER]}
+  builtins.input:       {cap: NONE, ret: [USER]}
+  raw_input:            {cap: NONE, ret: [USER]}
+
+  # ---- sql / db drivers returning connections
+  sqlite3.connect:      {cap: NONE, mkobj: db.Connection}
+  psycopg2.connect:     {cap: NONE, mkobj: db.Connection}
+  pymysql.connect:      {cap: NONE, mkobj: db.Connection}
+  mysql.connector.connect: {cap: NONE, mkobj: db.Connection}
+  pyodbc.connect:       {cap: NONE, mkobj: db.Connection}
+  sqlalchemy.create_engine: {cap: NONE, mkobj: db.Connection}
+  pandas.read_sql:      {cap: SQL_EXEC, t: [0, sql], ret: [DB]}
+  pandas.read_sql_query: {cap: SQL_EXEC, t: [0, sql], ret: [DB]}
+  sqlalchemy.text:      {cap: NONE}
+  os.path.expanduser:   {cap: NONE, passthrough: 0}
+  os.path.abspath:      {cap: NONE, passthrough: 0}
+  os.path.normpath:     {cap: NONE, passthrough: 0}
+  os.path.realpath:     {cap: NONE, passthrough: 0}
+  os.path.expandvars:   {cap: NONE, passthrough: 0}
+  os.path.dirname:      {cap: NONE, passthrough: 0}
+
+  # ---- install
+  pip.main:             {cap: INSTALL_PKG, t: [0], pip_main: true}
+  pip._internal.main:   {cap: INSTALL_PKG, t: [0], pip_main: true}
+  setuptools.setup:     {cap: NONE}
+  distutils.core.setup: {cap: NONE}
+
+  # ---- sleep / time
+  time.sleep:           {cap: SLEEP}
+  asyncio.sleep:        {cap: SLEEP}
+
+  # ---- sanitizers
+  shlex.quote:          {cap: NONE, sanitize: QUOTED}
+  pipes.quote:          {cap: NONE, sanitize: QUOTED}
+  re.escape:            {cap: NONE, sanitize: QUOTED}
+  html.escape:          {cap: NONE, sanitize: QUOTED}
+  urllib.parse.quote:   {cap: NONE, sanitize: QUOTED}
+  urllib.parse.quote_plus: {cap: NONE, sanitize: QUOTED}
+  os.path.basename:     {cap: NONE, sanitize: QUOTED}
+  werkzeug.utils.secure_filename: {cap: NONE, sanitize: QUOTED}
+  secure_filename:      {cap: NONE, sanitize: QUOTED}
+  shlex.split:          {cap: NONE}
+
+# Matched on the *method name* when the receiver type is unknown (or when the receiver class matches).
+methods:
+  execute:              {cap: SQL_EXEC, t: [0, sql, query, statement], p: [1, parameters, params]}
+  executemany:          {cap: SQL_EXEC, t: [0, sql], p: [1], flags: [many]}
+  executescript:        {cap: SQL_EXEC, t: [0, sql_script], flags: [script]}
+  exec_driver_sql:      {cap: SQL_EXEC, t: [0]}
+  raw:                  {cap: SQL_EXEC, t: [0], recv_not: [requests.Session]}
+  fetchall:             {cap: NONE, ret: [DB]}
+  fetchone:             {cap: NONE, ret: [DB]}
+  fetchmany:            {cap: NONE, ret: [DB]}
+  # requests-like sessions and clients
+  get:                  {cap: NET_FETCH, t: [0, url], p: [params], ret: [NET], recv: [requests.Session], urlish: true}
+  post:                 {cap: NET_SEND, t: [0, url], p: [1, data, json, files, content, params], ret: [NET], recv: [requests.Session], urlish: true}
+  put:                  {cap: NET_SEND, t: [0, url], p: [1, data, json, files, content, params], ret: [NET], recv: [requests.Session], urlish: true}
+  patch:                {cap: NET_SEND, t: [0, url], p: [1, data, json, files, content, params], ret: [NET], recv: [requests.Session], urlish: true}
+  # sockets / connections
+  connect:              {cap: NET_CONNECT, t: [0], recv: [socket.socket, smtplib.SMTP, ftplib.FTP, paramiko.SSHClient], target_tuple: true}
+  connect_ex:           {cap: NET_CONNECT, t: [0], recv: [socket.socket], target_tuple: true}
+  bind:                 {cap: NET_LISTEN, t: [0], recv: [socket.socket], target_tuple: true}
+  listen:               {cap: NET_LISTEN, recv: [socket.socket]}
+  send:                 {cap: NET_SEND, p: [0], recv: [socket.socket, websocket.WebSocket]}
+  sendall:              {cap: NET_SEND, p: [0], recv: [socket.socket]}
+  sendto:               {cap: NET_SEND, p: [0], t: [1], recv: [socket.socket], target_tuple: true}
+  recv:                 {cap: NONE, ret: [NET], recv: [socket.socket, websocket.WebSocket]}
+  recvfrom:             {cap: NONE, ret: [NET], recv: [socket.socket]}
+  sendmail:             {cap: NET_SEND, p: [2], t: [1], recv: [smtplib.SMTP]}
+  send_message:         {cap: NET_SEND, p: [0], recv: [smtplib.SMTP]}
+  storbinary:           {cap: NET_SEND, p: [1], recv: [ftplib.FTP]}
+  storlines:            {cap: NET_SEND, p: [1], recv: [ftplib.FTP]}
+  request:              {cap: NET_SEND, t: [1], p: [2, body], recv: [http.client.HTTPConnection], method_arg: 0}
+  exec_command:         {cap: EXEC_SHELL, t: [0, command], recv: [paramiko.SSHClient], flags: [remote]}
+  put_file:             {cap: NET_SEND, p: [0], recv: [paramiko.SSHClient]}
+  # cloud storage
+  upload_file:          {cap: NET_SEND, p: [0], t: [1], flags: [cloud_upload]}
+  upload_fileobj:       {cap: NET_SEND, p: [0], t: [1], flags: [cloud_upload]}
+  put_object:           {cap: NET_SEND, p: [Body, body], t: [Bucket], flags: [cloud_upload]}
+  upload_from_filename: {cap: NET_SEND, p: [0], flags: [cloud_upload]}
+  upload_from_string:   {cap: NET_SEND, p: [0], flags: [cloud_upload]}
+  # pathlib
+  read_text:            {cap: READ_FILE, path_recv: true, ret: [FILE]}
+  read_bytes:           {cap: READ_FILE, path_recv: true, ret: [FILE]}
+  write_text:           {cap: WRITE_FILE, path_recv: true, p: [0]}
+  write_bytes:          {cap: WRITE_FILE, path_recv: true, p: [0]}
+  unlink:               {cap: DELETE, path_recv: true}
+  rmdir:                {cap: DELETE, path_recv: true}
+  # threads / processes
+  start:                {cap: SPAWN, recv: [threading.Thread, multiprocessing.Process]}
+  submit:               {cap: SPAWN, recv: [concurrent.futures.Executor], spawn_fn: 0}
+  apply_async:          {cap: SPAWN, recv: [multiprocessing.Pool], spawn_fn: 0}
+  # scheduling / persistence helpers
+  enable:               {cap: NONE}
+  # misc
+  extractall:           {cap: WRITE_FILE, t: [0], recv: [zipfile.ZipFile, tarfile.TarFile], flags: [archive_extract]}
+  extract:              {cap: WRITE_FILE, t: [1], recv: [zipfile.ZipFile, tarfile.TarFile], flags: [archive_extract]}

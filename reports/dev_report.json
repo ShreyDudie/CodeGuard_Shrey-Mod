@@ -1,0 +1,85 @@
+{
+  "n": 42,
+  "tp": 30,
+  "fp": 0,
+  "tn": 12,
+  "fn": 0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "accuracy": 1.0,
+  "category_exact_match": 1.0,
+  "language_accuracy": 1.0,
+  "latency_ms": {
+    "p50": 6.164750026073307,
+    "p95": 57.7348000369966,
+    "max": 473.4419999876991,
+    "mean": 31.503421429079026
+  },
+  "per_category": {
+    "secret_access": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "data_exfiltration": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "destructive_command": {
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "persistence_or_privesc": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "obfuscated_execution": {
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "dependency_risk": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "resource_exhaustion": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "ssrf_network_exfil": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "ai_targeted_instructions": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    }
+  },
+  "wrong": []
+}

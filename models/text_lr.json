@@ -1,0 +1,13 @@
+{
+ "kind": "hashed word+char n-gram logistic regression",
+ "features": 131072,
+ "train_pos": 125,
+ "train_neg": 15937,
+ "leave_family_out_recall_mean": 0.737,
+ "heldout_stdlib_fpr_at_0.8": 0.0,
+ "sources": [
+  "Prompt-Injection-Firewall benchmark (Apache-2.0)",
+  "Python standard library comments (PSF)",
+  "own examples"
+ ]
+}

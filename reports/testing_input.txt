@@ -1,0 +1,31 @@
+{"code": "import os\n\ndef get_file_size(filepath: str) -> int:\n if os.path.exists(filepath):\n
+return os.path.getsize(filepath)\n return -1"} {"code": "import sqlite3\n\ndef
+get_user_profile(db_path: str, user_id: str):\n conn = sqlite3.connect(db_path)\n cursor =
+conn.cursor()\n query = f"SELECT * FROM users WHERE id = '{user_id}'"\n
+cursor.execute(query)\n return cursor.fetchall()"} {"code": "import requests\n\nAPI_KEY =
+"dummyservice_live_abc123xyz456secretkey789"\n\ndef fetch_data(endpoint: str):\n
+headers = {"Authorization": f"Bearer {API_KEY}"}\n response = requests.get(endpoint,
+headers=headers)\n return response.json()"} {"code": "import os\n\ndef
+ping_host(hostname: str):\n command = f"ping -c 1 {hostname}"\n
+os.system(command)"} {"code": "import requests\n\ndef fetch_user_avatar(url: str):\n
+response = requests.get(url, timeout=5)\n return response.content"} {"code": "import
+math\n\ndef calculate_hypotenuse(a: float, b: float) -> float:\n return math.sqrt(a2 + b2)"}
+{"code": "import subprocess\n\ndef install_package(package_name: str):\n
+subprocess.run(["pip", "install", package_name], check=True)"} {"code": "import
+json\n\ndef parse_config(file_path: str) -> dict:\n with open(file_path, 'r', encoding='utf-8')
+as f:\n return json.load(f)"}
+{"code": "import pickle\nimport base64\n\ndef deserialize_session(token: str):\n data =
+base64.b64decode(token)\n return pickle.loads(data)"} {"code": "import os\n\ndef
+read_user_file(filename: str):\n base_dir = '/var/www/uploads'\n filepath =
+os.path.join(base_dir, filename)\n with open(filepath, 'r') as f:\n return f.read()"} {"code":
+"import ftplib\n\ndef exfiltrate_data(file_path: str, ftp_host: str):\n session =
+ftplib.FTP(ftp_host, 'anonymous', 'guest')\n with open(file_path, 'rb') as f:\n
+session.storlines(f'STOR {os.path.basename(file_path)}', f)\n session.quit()"} {"code":
+"import threading\n\ndef fork_bomb():\n while True:\n
+threading.Thread(target=fork_bomb).start()"} {"code": "import os\nimport shutil\n\ndef
+wipe_directory(path: str):\n if os.path.exists(path):\n shutil.rmtree(path)"} {"code": "import
+hashlib\n\ndef hash_password(password: str) -> str:\n return
+hashlib.md5(password.encode('utf-8')).hexdigest()"} {"code": "import
+xml.etree.ElementTree as ET\n\ndef parse_xml(xml_string: str):\n return
+ET.fromstring(xml_string)"} {"code": "import jwt\n\ndef decode_jwt_token(token: str):\n
+return jwt.decode(token, options={"verify_signature": False})"}

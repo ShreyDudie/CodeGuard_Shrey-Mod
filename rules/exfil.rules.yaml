@@ -1,0 +1,253 @@
+# data_exfiltration - sending local data to an external destination
+- id: exfil.env_or_system_data_sent
+  category: data_exfiltration
+  weight: 0.92
+  tags: [T1048, T1041]
+  when:
+    cap: [NET_SEND, ICMP, DNS]
+    pl_any: [ENV_DUMP, SENS_SYS]
+    hostc_none: [LOOPBACK]
+  does: "collects {src} and sends it to {host}"
+  why: "that data can contain passwords, tokens and account details, and it is leaving the machine"
+  would: "an outsider running {host} would receive that data"
+
+- id: exfil.secret_sent_suspicious
+  category: data_exfiltration
+  weight: 0.92
+  tags: [T1048, T1041]
+  when:
+    cap: [NET_SEND, NET_FETCH, ICMP, DNS]
+    pl_any: [SECRET]
+    hostc_any: [SUSPICIOUS, DROPSITE]
+  does: "reads {src} and sends it to {host}"
+  why: "that address looks like an attacker-controlled drop point and the data is a secret"
+  would: "the secret would be handed to whoever runs {host}"
+
+- id: exfil.secret_sent_unknown
+  category: data_exfiltration
+  weight: 0.45
+  tags: [T1048]
+  when:
+    cap: [NET_SEND]
+    pl_any: [SECRET]
+    hostc_none: [SUSPICIOUS, DROPSITE, LOOPBACK, EXTERNAL, EXTERNAL_IP]
+  unless:
+    flags_any: [secret_in_header]
+  does: "reads {src} and posts it to {host}"
+  why: "secrets should not be sent to arbitrary servers"
+  would: "the receiving server would get a copy of the secret"
+
+- id: exfil.secret_sent_named_outside
+  category: data_exfiltration
+  weight: 0.72
+  tags: [T1048]
+  when:
+    cap: [NET_SEND]
+    pl_any: [SECRET]
+    hostc_any: [EXTERNAL, EXTERNAL_IP]
+  unless:
+    flags_any: [secret_in_header]
+  does: "reads {src} and posts it to the outside address {host}"
+  why: "a secret is being sent to a fixed server that is not part of the program"
+  would: "the receiving server would get a copy of the secret"
+
+- id: exfil.file_to_suspicious
+  category: data_exfiltration
+  weight: 0.85
+  tags: [T1048, T1567]
+  when:
+    cap: [NET_SEND]
+    pl_any: [FILE, DB]
+    hostc_any: [SUSPICIOUS, DROPSITE]
+  does: "reads {src} and uploads it to {host}"
+  why: "that address looks like an attacker-controlled drop point"
+  would: "a copy of the data would leave the machine"
+
+- id: exfil.covert_channel
+  category: data_exfiltration
+  weight: 0.94
+  tags: [T1048.003]
+  when:
+    cap: [ICMP, DNS]
+    flags_any: [data_in_packet, data_in_query, data_in_host]
+  does: "hides data inside {target} network packets (a covert channel)"
+  why: "ping and DNS lookups are rarely monitored, so attackers smuggle data out through them"
+  would: "pieces of {src} would be sent out to {target} a few bytes at a time"
+
+- id: exfil.nc_pipe
+  category: data_exfiltration
+  weight: 0.85
+  tags: [T1048]
+  when:
+    cap: NET_SEND
+    flags_any: [nc_pipe, ssh_pipe]
+    pl_any: [SECRET, SENS_SYS, ENV_DUMP, FILE]
+  does: "pipes {src} straight into a network connection to {host}"
+  why: "this streams local data to another machine"
+  would: "the remote machine would receive the data"
+
+- id: exfil.sql_injection_select
+  category: data_exfiltration
+  weight: 0.82
+  tags: [T1048, CWE-89]
+  when:
+    cap: SQL_STMT
+    flags_all: [injectable, kind_select]
+  unless:
+    tl_any: [VALIDATED, QUOTED]
+  does: "builds a SELECT query by pasting user input into the SQL text"
+  why: "an attacker can change what the query returns (for example with {witness})"
+  would: "the whole table could be dumped instead of one record"
+
+- id: exfil.sql_file_write
+  category: data_exfiltration
+  weight: 0.70
+  tags: [T1048]
+  when:
+    cap: SQL_STMT
+    flags_any: [file_write, file_read]
+  does: "makes the database write to or read from a file on the server"
+  why: "database file functions can be used to read secrets or drop files on the host"
+  would: "server files could be read or created through the database"
+
+- id: exfil.sql_dump_sensitive
+  category: data_exfiltration
+  weight: 0.55
+  tags: [T1005]
+  when:
+    cap: SQL_STMT
+    flags_any: [schema_enum]
+  does: "reads out the database structure"
+  why: "that is how attackers harvest account data"
+  would: "all rows would be returned at once"
+
+- id: exfil.sqli_payload_text
+  category: data_exfiltration
+  weight: 0.75
+  tags: [CWE-89]
+  when:
+    cap: SQL_STMT
+    flags_any: [sqli_payload]
+  does: "contains an SQL-injection payload"
+  why: "payloads like this are used to bypass logins or dump data"
+  would: "if run against a database it would return rows it should not"
+
+- id: exfil.markdown_beacon
+  category: data_exfiltration
+  weight: 0.85
+  tags: [T1048]
+  when:
+    cap: NET_FETCH
+    flags_any: [md_beacon]
+    pl_any: [SECRET, ENV_DUMP, SENS_SYS, FILE, USER]
+  does: "embeds a link or image that carries data in its URL ({host})"
+  why: "rendering the document would silently send that data to another server"
+  would: "the data would be leaked as soon as the page or image is loaded"
+
+- id: exfil.git_push_remote
+  category: data_exfiltration
+  weight: 0.50
+  tags: [T1567]
+  when:
+    cap: NET_SEND
+    flags_all: [git, repo_push]
+    hostc_none: [LOOPBACK]
+  does: "pushes the repository to {host}"
+  why: "pushing source code to an unknown remote copies it off the machine"
+  would: "the code would be uploaded to that server"
+
+- id: exfil.file_to_caller_host
+  category: data_exfiltration
+  weight: 0.40
+  tags: [T1048]
+  when:
+    cap: NET_SEND
+    pl_any: [FILE, DB]
+    hostc_any: [USER, UNKNOWN]
+  unless:
+    any:
+      - {flags_any: [cloud_upload, validated]}
+      - {pl_any: [SECRET, ENV_DUMP, SENS_SYS]}
+  does: "uploads {src} to a server address chosen by the caller"
+  why: "nothing limits which server receives the data"
+  would: "the file could be sent to any machine on the internet"
+
+- id: exfil.local_file_to_external
+  category: data_exfiltration
+  weight: 0.72
+  tags: [T1048, T1567]
+  when:
+    cap: NET_SEND
+    pl_any: [FILE, DB]
+    hostc_any: [EXTERNAL, EXTERNAL_IP]
+  unless:
+    any:
+      - {flags_any: [cloud_upload, validated]}
+      - {pl_any: [SECRET, ENV_DUMP, SENS_SYS]}
+  does: "reads {src} and sends its contents to the outside address {host}"
+  why: "local data files are being copied to a server that is not part of the program"
+  would: "the file's contents would leave the machine and be stored by the receiving server"
+
+- id: exfil.data_in_dns_name
+  category: data_exfiltration
+  weight: 0.78
+  tags: [T1048.003]
+  when:
+    cap: DNS
+    tl_any: [FILE, ENV, SECRET, DB, ENV_DUMP, SENS_SYS]
+  does: "puts {src} into a hostname that it looks up ({target})"
+  why: "DNS lookups leave the machine and reach whoever runs the domain, so data hidden in the name is leaked"
+  would: "the data would arrive at the name server for that domain"
+
+- id: exfil.data_in_url
+  category: data_exfiltration
+  weight: 0.72
+  tags: [T1048.003, T1041]
+  when:
+    cap: [NET_FETCH, NET_SEND]
+    tl_any: [FILE, ENV, SECRET, DB, ENV_DUMP, SENS_SYS]
+    hostc_any: [EXTERNAL, EXTERNAL_IP, SUSPICIOUS, DROPSITE]
+  unless:
+    flags_any: [cloud_upload, validated]
+  does: "puts {src} into the address it requests ({host})"
+  why: "anything placed in a URL is delivered to the server that owns it, and ends up in its logs"
+  would: "the data would leave the machine as part of the web address"
+
+- id: exfil.file_to_internal_host
+  category: data_exfiltration
+  weight: 0.72
+  tags: [T1048, T1041]
+  when:
+    cap: [NET_SEND, NET_FETCH]
+    pl_any: [FILE, DB, ENV_DUMP, SENS_SYS]
+    hostc_any: [PRIVATE, INTERNAL, LOOPBACK, META, LINKLOCAL]
+  unless:
+    flags_any: [cloud_upload, validated]
+  does: "reads {src} and sends it to the internal address {host}"
+  why: "local data is being copied to another machine, and a private address does not make that safe"
+  would: "the file's contents would arrive at whatever listens on {host}"
+
+- id: exfil.secret_to_internal_host
+  category: data_exfiltration
+  weight: 0.72
+  tags: [T1048]
+  when:
+    cap: NET_SEND
+    pl_any: [SECRET]
+    hostc_any: [PRIVATE, INTERNAL, LOOPBACK, META, LINKLOCAL]
+  unless:
+    flags_any: [secret_in_header]
+  does: "reads {src} and sends it to {host}"
+  why: "a secret is being handed to another service; an internal address does not make that safe"
+  would: "whatever listens on {host} would receive the secret"
+
+- id: exfil.sql_dump_table
+  category: data_exfiltration
+  weight: 0.45          # a constant full-table read of an account table is ordinary application code; it only matters together with other evidence
+  tags: [T1005]
+  when:
+    cap: SQL_STMT
+    flags_any: [dump_table]
+  does: "reads every row of a sensitive table"
+  why: "an unfiltered read of account data returns everything at once"
+  would: "all rows would be returned at once"

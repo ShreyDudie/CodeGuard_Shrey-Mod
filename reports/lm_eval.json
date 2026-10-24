@@ -1,0 +1,51 @@
+{
+  "negatives": 2228,
+  "model_kb": 1159.3,
+  "encoders": {
+    "base64": {
+      "n": 2229,
+      "auc_lm": 0.9996,
+      "auc_entropy": 0.9868
+    },
+    "hex": {
+      "n": 2229,
+      "auc_lm": 0.9951,
+      "auc_entropy": 0.0076
+    },
+    "zlib64": {
+      "n": 2229,
+      "auc_lm": 0.9996,
+      "auc_entropy": 0.9961
+    },
+    "rot13": {
+      "n": 2229,
+      "auc_lm": 0.9957,
+      "auc_entropy": 0.4894
+    },
+    "reversed": {
+      "n": 2229,
+      "auc_lm": 0.9967,
+      "auc_entropy": 0.4894
+    },
+    "urlsafe": {
+      "n": 2229,
+      "auc_lm": 0.9996,
+      "auc_entropy": 0.9842
+    }
+  },
+  "overall": {
+    "auc_lm": 0.9977,
+    "auc_entropy": 0.6589
+  },
+  "threshold_bpc_p99_of_benign": 6.1,
+  "recall_at_p99_threshold": 0.9962,
+  "deployed_detector": {
+    "threshold_bpc": 6.2,
+    "blob_recall": 0.9997,
+    "n_blobs": 8904,
+    "benign_literals": 2228,
+    "benign_blob_shaped": 2,
+    "benign_false_alarms": 0
+  },
+  "benign_literal_median_bpc": 2.473
+}

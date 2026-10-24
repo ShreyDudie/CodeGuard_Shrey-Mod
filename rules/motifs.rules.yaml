@@ -1,0 +1,145 @@
+# Behaviour motifs (see codeguard/motifs.py): several API roles that only make sense together.
+- id: motif.reverse_shell
+  category: ssrf_network_exfil
+  weight: 0.92
+  tags: [T1059, T1095]
+  when: {cap: MOTIF, flags_any: [motif_reverse_shell]}
+  does: "connects out to a remote machine and wires that connection to a shell"
+  why: "this is a reverse shell: the remote machine gets a command prompt on this computer"
+  would: "whoever controls the other end could run any command here"
+
+- id: motif.binary_download
+  category: obfuscated_execution
+  weight: 0.70
+  tags: [T1105]
+  when: {cap: MOTIF, flags_any: [motif_binary_download]}
+  unless: {flags_any: [executed]}
+  does: "downloads an executable or script file and saves it to disk"
+  why: "fetching a program from the internet and writing it out is how malware droppers work"
+  would: "an unreviewed program would be placed on this machine"
+
+- id: motif.binary_download_run
+  category: obfuscated_execution
+  weight: 0.92
+  tags: [T1105, T1204]
+  when: {cap: MOTIF, flags_all: [motif_binary_download, executed]}
+  does: "downloads an executable or script file and then runs a program"
+  why: "downloading code and running it straight away is a dropper pattern"
+  would: "unknown code from the internet would run on this machine"
+
+- id: motif.download_and_run
+  category: obfuscated_execution
+  weight: 0.88
+  tags: [T1105, T1204]
+  when: {cap: MOTIF, flags_any: [motif_download_and_run]}
+  does: "downloads data into a temporary file and then runs a program"
+  why: "downloaded content is executed without being inspected"
+  would: "whatever the server returned would be run on this machine"
+
+- id: motif.install_hook
+  category: dependency_risk
+  weight: 0.80
+  tags: [T1195.002, T1059]
+  when: {cap: MOTIF, flags_any: [motif_install_hook]}
+  does: "adds an install-time hook that contacts the network or runs commands"
+  why: "code in a package's install step runs on every machine that installs it, before anyone reviews it"
+  would: "installing the package would silently run this code"
+
+- id: motif.process_injection
+  category: persistence_or_privesc
+  weight: 0.88
+  tags: [T1055]
+  when: {cap: MOTIF, flags_any: [motif_process_injection]}
+  does: "opens another process, allocates memory in it and starts code there"
+  why: "this is process injection, used to hide code inside a trusted program or to gain its privileges"
+  would: "foreign code would run inside another process"
+
+- id: motif.keylogger
+  category: secret_access
+  weight: 0.78
+  tags: [T1056.001]
+  when: {cap: MOTIF, flags_any: [motif_keylogger]}
+  does: "listens to every key that is pressed"
+  why: "a key logger records passwords and private messages as they are typed"
+  would: "typed passwords and messages could be captured"
+
+- id: motif.screen_capture
+  category: secret_access
+  weight: 0.50
+  tags: [T1113]
+  when: {cap: MOTIF, flags_any: [motif_screen_capture]}
+  does: "takes screenshots of the screen"
+  why: "screenshots can capture passwords, tokens and private documents shown on screen"
+  would: "whatever is on screen would be captured"
+
+- id: motif.clipboard_read
+  category: secret_access
+  weight: 0.50
+  tags: [T1115]
+  when: {cap: MOTIF, flags_any: [motif_clipboard_read]}
+  does: "reads the clipboard"
+  why: "the clipboard often holds copied passwords and keys"
+  would: "whatever was copied last would be read"
+
+- id: motif.browser_data
+  category: secret_access
+  weight: 0.85
+  tags: [T1555.003]
+  when: {cap: MOTIF, flags_any: [motif_browser_data]}
+  does: "reads browser, wallet or chat-app data stores"
+  why: "those files hold saved passwords, cookies, session tokens and wallet keys"
+  would: "stored logins and keys would be collected"
+
+- id: motif.fingerprint_exfil
+  category: data_exfiltration
+  weight: 0.62
+  tags: [T1082, T1048]
+  when: {cap: MOTIF, flags_any: [motif_fingerprint_exfil]}
+  does: "collects several facts about this machine (name, user, address, system) and uses the network"
+  why: "profiling the host and sending it out is typical of reconnaissance and beaconing"
+  would: "the machine's identity details could be sent to an outside server"
+
+- id: motif.shellcode_loader
+  category: obfuscated_execution
+  weight: 0.92
+  tags: [T1055, T1620]
+  when: {cap: MOTIF, flags_all: [motif_shellcode, loader]}
+  does: "holds a block of raw machine code and loads it into executable memory"
+  why: "raw machine code run from memory is how malware hides its real behaviour"
+  would: "the hidden machine code would be run"
+
+- id: motif.shellcode_named
+  category: obfuscated_execution
+  weight: 0.55
+  tags: [T1027]
+  when: {cap: MOTIF, flags_all: [motif_shellcode, named]}
+  does: "keeps a large block of raw bytes in a variable called shellcode or payload"
+  why: "that is how packed machine code is usually stored before it is run"
+  would: "the bytes could be loaded and executed"
+
+- id: motif.obfuscator_marker
+  category: obfuscated_execution
+  weight: 0.65
+  tags: [T1027]
+  when: {cap: MOTIF, flags_any: [motif_obfuscator_marker]}
+  does: "carries the marker of a code obfuscation tool ({target})"
+  why: "obfuscators are used to hide what a program does from reviewers"
+  would: "the real logic is hidden and cannot be reviewed"
+
+- id: motif.exfil_channel
+  category: data_exfiltration
+  weight: 0.72
+  tags: [T1567, T1102]
+  when: {cap: MOTIF, flags_any: [motif_exfil_channel]}
+  does: "sends data to a webhook, bot or tunnel service ({target})"
+  why: "these services are used as drop points because anyone can create one without being traced"
+  would: "the data would arrive at an anonymous outside account"
+
+- id: motif.import_typosquat
+  category: dependency_risk
+  weight: 0.62
+  tags: [T1195.001]
+  when: {cap: MOTIF, flags_any: [motif_import_typosquat]}
+  does: "imports {target}, which looks like a misspelled copy of the popular package {similar}"
+  why: "look-alike package names are published to catch typing mistakes and run attacker code on import"
+  would: "an unknown package from an unknown author would be loaded"

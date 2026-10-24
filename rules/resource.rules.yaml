@@ -1,0 +1,262 @@
+# resource_exhaustion - overloading the machine: endless loops, fork bombs, unbounded allocation
+- id: res.fork_bomb
+  category: resource_exhaustion
+  weight: 0.98
+  tags: [T1499.003]
+  when:
+    cap: FORK_BOMB
+  does: "defines and starts a fork bomb: a function that keeps launching copies of itself"
+  why: "the number of processes doubles every round until the machine runs out of resources"
+  would: "the system would freeze within seconds and need a hard reboot"
+
+- id: res.fork_in_loop
+  category: resource_exhaustion
+  weight: 0.95
+  tags: [T1499.003]
+  when:
+    cap: SPAWN
+    flags_all: [fork]
+    flags_any: [in_unbounded_loop, in_loop]
+  does: "calls fork() inside a loop"
+  why: "every pass creates another process, and nothing limits the count"
+  would: "the process table would fill up and the machine would hang"
+
+- id: res.unbounded_busy_loop
+  category: resource_exhaustion
+  weight: 0.68
+  tags: [T1499.001]
+  when:
+    cap: LOOP
+    flags_all: [unbounded, busy]
+  unless:
+    flags_any: [in_thread_x]
+  does: "runs a loop that never ends and never waits"
+  why: "a busy loop keeps a CPU core at 100% forever"
+  would: "the CPU would be saturated and other work would starve"
+
+- id: res.unbounded_growth_loop
+  category: resource_exhaustion
+  weight: 0.88
+  tags: [T1499.001]
+  when:
+    cap: LOOP
+    flags_all: [unbounded]
+    flags_any: [mem_growth, spawn, background_spawn, stress_tool]
+  does: "runs a never-ending loop that keeps allocating memory or starting new work"
+  why: "nothing ever stops it or frees what it creates"
+  would: "memory or the process table would fill up until the machine fails"
+
+- id: res.recursion
+  category: resource_exhaustion
+  weight: 0.70
+  tags: [T1499]
+  when:
+    cap: LOOP
+    flags_any: [recursion]
+  does: "calls itself without any stopping condition"
+  why: "infinite recursion eats the stack until the program crashes"
+  would: "the process would crash with a stack overflow"
+
+- id: res.huge_iteration
+  category: resource_exhaustion
+  weight: 0.62
+  tags: [T1499]
+  when:
+    cap: LOOP
+    flags_any: [huge_iter]
+    flags_none: [in_thread_x]
+  does: "loops an enormous number of times ({count} iterations)"
+  why: "that much work ties up the CPU for a very long time"
+  would: "the program would effectively hang"
+
+- id: res.redos
+  category: resource_exhaustion
+  weight: 0.55
+  tags: [T1499.004, CWE-1333]
+  when:
+    cap: LOOP
+    flags_any: [redos]
+  does: "uses a regular expression with nested repetition ({target})"
+  why: "such patterns can take exponential time on crafted input"
+  would: "one malicious string could freeze the program"
+
+- id: res.many_threads
+  category: resource_exhaustion
+  weight: 0.80
+  tags: [T1499.003]
+  when:
+    cap: SPAWN
+    mult_gte: 200
+  unless:
+    flags_any: [pool_task]
+  does: "starts about {count} threads or processes"
+  why: "that many workers exhausts memory and scheduler capacity"
+  would: "the machine would slow to a crawl"
+
+- id: res.endless_workers
+  category: resource_exhaustion
+  weight: 0.88
+  tags: [T1499.003]
+  when:
+    cap: SPAWN
+    flags_all: [target_unbounded]
+    mult_gte: 20
+  does: "starts {count} workers that each run a never-ending loop"
+  why: "every worker burns a CPU core forever"
+  would: "all CPU cores would be saturated permanently"
+
+- id: res.spawn_in_unbounded_loop
+  category: resource_exhaustion
+  weight: 0.90
+  tags: [T1499.003]
+  when:
+    cap: [SPAWN, EXEC_PROC, EXEC_SHELL]
+    flags_all: [in_unbounded_loop]
+    flags_any: [thread, fork, self_spawn, background]
+  does: "keeps starting new threads or processes inside a loop that never ends"
+  why: "nothing limits how many get created"
+  would: "the machine would run out of processes and memory"
+
+- id: res.self_spawn
+  category: resource_exhaustion
+  weight: 0.85
+  tags: [T1499.003]
+  when:
+    cap: SPAWN
+    flags_all: [self_spawn, in_loop]
+  does: "starts copies of the script itself inside a loop"
+  why: "each copy starts more copies"
+  would: "the machine would be overwhelmed by processes"
+
+- id: res.huge_pool
+  category: resource_exhaustion
+  weight: 0.75
+  tags: [T1499]
+  when:
+    cap: SPAWN
+    flags_any: [huge_pool]
+  does: "creates a worker pool with {count} workers"
+  why: "that is far more than any machine can run efficiently"
+  would: "memory and CPU would be exhausted"
+
+- id: res.connection_flood
+  category: resource_exhaustion
+  weight: 0.80
+  tags: [T1499.002]
+  when:
+    cap: [NET_CONNECT, NET_FETCH, NET_SEND]
+    mult_gte: 1000
+  does: "opens about {count} network connections to {host}"
+  why: "that many connections exhaust sockets and can knock a service over"
+  would: "the connection table (and the target service) would be overwhelmed"
+
+- id: res.process_flood
+  category: resource_exhaustion
+  weight: 0.80
+  tags: [T1499]
+  when:
+    cap: [EXEC_PROC, EXEC_SHELL]
+    mult_gte: 500
+  does: "launches about {count} external processes"
+  why: "that many processes exhaust the machine"
+  would: "the system would slow down or run out of process slots"
+
+- id: res.disk_fill
+  category: resource_exhaustion
+  weight: 0.90
+  tags: [T1499.001, T1485]
+  when:
+    cap: DISK_FILL
+    flags_any: [unbounded, no_limit, no_count, huge]
+  does: "writes endless data into {target} with no size limit"
+  why: "the file keeps growing until the disk is full"
+  would: "the disk would fill up and services depending on it would fail"
+
+- id: res.huge_alloc
+  category: resource_exhaustion
+  weight: 0.82
+  tags: [T1499]
+  when:
+    cap: ALLOC
+    flags_any: [huge]
+  does: "allocates an enormous amount of memory in one go"
+  why: "the request is far larger than the RAM of a normal machine"
+  would: "the process would be killed or the machine would start swapping"
+
+- id: res.large_alloc
+  category: resource_exhaustion
+  weight: 0.40
+  tags: [T1499]
+  when:
+    cap: ALLOC
+    flags_any: [large]
+  does: "allocates a very large block of memory"
+  why: "large allocations can exhaust memory"
+  would: "memory use would spike"
+
+- id: res.sql_sleep
+  category: resource_exhaustion
+  weight: 0.68
+  tags: [T1499]
+  when:
+    cap: SQL_STMT
+    flags_any: [sleep_dos, huge_series]
+  does: "makes the database sleep or generate an enormous result"
+  why: "long-running statements tie up database connections"
+  would: "the database would stall under load"
+
+- id: res.sql_cartesian
+  category: resource_exhaustion
+  weight: 0.50
+  tags: [T1499]
+  when:
+    cap: SQL_STMT
+    flags_any: [cartesian, recursive_cte]
+  does: "joins several tables without a join condition (or recurses without a limit)"
+  why: "the result size multiplies with every table"
+  would: "the query could run for hours and exhaust memory"
+
+- id: res.ping_flood
+  category: resource_exhaustion
+  weight: 0.72
+  tags: [T1498]
+  when:
+    cap: ICMP
+    flags_any: [ping_flood, ping_large]
+  does: "floods {target} with ping packets"
+  why: "a ping flood is a basic denial-of-service attack"
+  would: "the target (and the local network link) would be saturated"
+
+- id: res.unbounded_large_write
+  category: resource_exhaustion
+  weight: 0.65
+  tags: [T1499, T1485]
+  all:
+    - {cap: WRITE_FILE, flags_any: [in_unbounded_loop]}
+    - {cap: ALLOC, flags_all: [in_unbounded_loop, large]}
+  does: "keeps writing large blocks to a file in a loop that never ends"
+  why: "nothing stops the loop, so the file grows until the disk is full"
+  would: "the disk would fill up and other programs on the machine would start to fail"
+
+- id: res.background_flood
+  category: resource_exhaustion
+  weight: 0.86
+  tags: [T1499]
+  when:
+    cap: SPAWN
+    flags_all: [flood]
+    mult_gte: 1000
+  does: "starts a background command about {count} times in a loop"
+  why: "every iteration starts another process without waiting for the last one, so they pile up"
+  would: "the machine would run out of processes, memory or disk"
+
+- id: res.respawning_listener
+  category: resource_exhaustion
+  weight: 0.70
+  tags: [T1499]
+  when:
+    cap: NET_LISTEN
+    flags_all: [bind_shell, in_unbounded_loop]
+  does: "restarts a listening shell ({target}) forever, as soon as each connection ends"
+  why: "a loop with no exit keeps re-opening the listener, so the machine is permanently serving a shell and burning a process slot"
+  would: "the listener would come back after every disconnect and never stop"

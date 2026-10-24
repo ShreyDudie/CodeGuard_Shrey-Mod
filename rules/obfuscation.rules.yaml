@@ -1,0 +1,266 @@
+# obfuscated_execution - hiding intent: decoding and running payloads, dynamic code, unsafe deserialisation
+- id: obf.decoded_execution
+  category: obfuscated_execution
+  weight: 0.96
+  tags: [T1027, T1140, T1059]
+  when:
+    cap: [EVAL, EXEC_SHELL, EXEC_PROC, PIPE_EXEC]
+    flags_any: [decoded, encoded_cmd]
+  does: "decodes hidden text (base64, hex, rot13 or similar) and then runs it"
+  why: "decoding right before execution is used to hide what the code really does"
+  would: "a concealed command would run without anyone being able to read it in the source"
+
+- id: obf.decoded_label_exec
+  category: obfuscated_execution
+  weight: 0.92
+  tags: [T1027, T1140]
+  when:
+    cap: [EVAL, EXEC_SHELL, EXEC_PROC]
+    tl_any: [DECODED]
+  does: "runs text that was produced by a decoder"
+  why: "decoding right before execution is used to hide what the code really does"
+  would: "a concealed command would run"
+
+- id: obf.eval_dyncode
+  category: obfuscated_execution
+  weight: 0.86
+  tags: [T1620, T1059.006]
+  when:
+    cap: EVAL
+    flags_any: [dyncode]
+  does: "reads source code at runtime and executes it"
+  why: "code that is loaded and run dynamically can be swapped or hidden from reviewers"
+  would: "whatever source the program finds at that moment would be executed"
+
+- id: obf.eval_compiled
+  category: obfuscated_execution
+  weight: 0.80
+  tags: [T1059.006, T1027]
+  when:
+    cap: EVAL
+    flags_any: [compiled]
+  unless:
+    flags_any: [const_arg]
+  does: "compiles a string into code at runtime and runs it with {api}"
+  why: "building and running code from data hides the real behaviour from static review"
+  would: "any expression stored in that data would be executed"
+
+- id: obf.eval_built_string
+  category: obfuscated_execution
+  weight: 0.85
+  tags: [T1027]
+  when:
+    cap: EVAL
+    flags_any: [built_string]
+  does: "assembles the code to run from pieces of text"
+  why: "splitting code into fragments is a trick to avoid detection"
+  would: "the assembled code would execute"
+
+- id: obf.eval_nonliteral
+  category: obfuscated_execution
+  weight: 0.62
+  tags: [T1059.006]
+  when:
+    cap: EVAL
+    flags_any: [eval, exec]
+    labels_any: [FILE, NET, DB, ENV]
+  unless:
+    any:
+      - {flags_any: [compiled, dyncode, decoded, built_string, const_arg]}
+      - {tl_any: [USER]}
+  does: "evaluates text read from a file, the network or a database as code"
+  why: "data that is turned into code can be changed by whoever controls the source"
+  would: "the stored text would run as a program"
+
+- id: obf.eval_const_literal
+  category: obfuscated_execution
+  weight: 0.20
+  tags: [T1059.006]
+  when:
+    cap: EVAL
+    flags_any: [const_arg]
+  does: "evaluates a fixed piece of text as code"
+  why: "dynamic evaluation is rarely needed and makes review harder"
+  would: "that fixed text would run"
+
+- id: obf.dynamic_import
+  category: obfuscated_execution
+  weight: 0.82
+  tags: [T1027, T1059.006]
+  when:
+    cap: LOAD_MODULE
+    flags_any: [dynamic_name, built_string]
+  does: "imports a module whose name is assembled at runtime ({target})"
+  why: "hiding the name of the module that gets loaded is a classic way to dodge scanners"
+  would: "the {target} module would be loaded and used without ever appearing in the source"
+
+- id: obf.import_from_input
+  category: obfuscated_execution
+  weight: 0.72
+  tags: [T1059.006, CWE-470]
+  when:
+    cap: LOAD_MODULE
+    flags_all: [tainted]
+  unless:
+    flags_any: [validated]
+  does: "imports a module named by outside input"
+  why: "the caller can make the program load any module on the machine"
+  would: "arbitrary code from that module would run on import"
+
+- id: obf.native_library
+  category: obfuscated_execution
+  weight: 0.55
+  tags: [T1129]
+  when:
+    cap: LOAD_MODULE
+    flags_any: [native]
+    tl_any: [USER, NET, FILE]
+  does: "loads a native library from a path decided at runtime"
+  why: "native code bypasses all language-level checks"
+  would: "the library code would run inside the process"
+
+- id: obf.unsafe_deserialize_untrusted
+  category: obfuscated_execution
+  weight: 0.82
+  tags: [T1620, CWE-502]
+  when:
+    cap: DESERIALIZE
+    flags_any: [untrusted_path, untrusted_name, tainted_source]
+  does: "loads an object from {target} with a format that can run code (pickle, shelve, marshal ...)"
+  why: "these formats execute code while loading, and the location is writable by others or controlled from outside"
+  would: "a booby-trapped file would run attacker code as soon as it is opened"
+
+- id: obf.unsafe_deserialize
+  category: obfuscated_execution
+  weight: 0.42
+  tags: [CWE-502]
+  when:
+    cap: DESERIALIZE
+    flags_any: [pickle, shelve, marshal, torch_load]
+  does: "loads data with a format that can run code (pickle, shelve, marshal ...)"
+  why: "these formats execute code while loading"
+  would: "a booby-trapped file would run code when loaded"
+
+- id: obf.yaml_unsafe
+  category: obfuscated_execution
+  weight: 0.62
+  tags: [CWE-502]
+  when:
+    cap: DESERIALIZE
+    flags_any: [yaml_unsafe]
+  does: "parses YAML with a loader that can build arbitrary objects"
+  why: "unsafe YAML loading can execute code embedded in the document"
+  would: "a crafted YAML file could run code"
+
+- id: obf.aliased_dangerous_call
+  category: obfuscated_execution
+  weight: 0.80
+  tags: [T1027]
+  when:
+    cap: [EXEC_SHELL, EXEC_PROC, EVAL, LOAD_MODULE, DESERIALIZE]
+    flags_any: [aliased_import]
+    labels_any: [USER, NET, FILE, DB, DECODED]
+  does: "imports a dangerous module under a short alias and uses it to run commands"
+  why: "renaming os or subprocess is done to slip past simple pattern checks"
+  would: "commands built from outside input would run through the disguised call"
+
+- id: obf.aliased_dangerous_call_const
+  category: obfuscated_execution
+  weight: 0.40
+  tags: [T1027]
+  when:
+    cap: [EXEC_SHELL, EXEC_PROC, EVAL, LOAD_MODULE, DESERIALIZE]
+    flags_any: [aliased_import]
+  does: "imports a dangerous module under an alias"
+  why: "aliasing hides which module is being used"
+  would: "a command would run through the aliased name"
+
+- id: obf.dynamic_attribute
+  category: obfuscated_execution
+  weight: 0.86
+  tags: [T1027]
+  when:
+    cap: [EXEC_SHELL, EXEC_PROC, EVAL, LOAD_MODULE, DESERIALIZE, DELETE]
+    flags_any: [dynamic_attr]
+  does: "looks up a dangerous function by an assembled name and calls it"
+  why: "building the function name at runtime hides the call from scanners"
+  would: "the hidden function would be executed"
+
+- id: obf.remote_script_exec
+  category: obfuscated_execution
+  weight: 0.88
+  tags: [T1059, T1105]
+  when:
+    cap: [PIPE_EXEC, EVAL, EXEC_SHELL]
+    flags_any: [remote]
+  does: "downloads a script and runs it immediately without looking at it"
+  why: "whatever the server returns is executed, even if the server changes or is compromised"
+  would: "unknown code from the network would run on this machine"
+
+- id: obf.downloaded_exec
+  category: obfuscated_execution
+  weight: 0.80
+  tags: [T1105, T1059]
+  when:
+    cap: PIPE_EXEC
+    flags_any: [downloaded]
+  does: "downloads a file and then executes it ({target})"
+  why: "this is the standard download-and-run pattern for installing malware"
+  would: "an unreviewed program from the internet would run"
+
+- id: obf.dynamic_command
+  category: obfuscated_execution
+  weight: 0.55
+  tags: [T1059]
+  when:
+    cap: EXEC_PROC
+    flags_any: [dynamic_command]
+    tl_any: [DECODED, BUILT]
+  does: "runs a command whose name is assembled at runtime"
+  why: "hiding the command name makes the script harder to audit"
+  would: "an unreadable command would run"
+
+- id: obf.indirect_call_lookup
+  category: obfuscated_execution
+  weight: 0.82
+  tags: [T1027, T1059.006]
+  when:
+    cap: INDIRECT_CALL
+    flags_any: [indirect_lookup, indirect_getattr, indirect_unicode]
+  does: "reaches {target} through a run-time lookup or disguised spelling instead of calling it by name"
+  why: "calling exec, eval or a process function through globals(), sys.modules, getattr or look-alike letters is done to hide the call from reviewers and scanners"
+  would: "code would run through a path that simple checks cannot see"
+
+- id: obf.indirect_call_value
+  category: obfuscated_execution
+  weight: 0.60
+  tags: [T1027]
+  when:
+    cap: INDIRECT_CALL
+    flags_any: [indirect_value]
+  does: "keeps {target} in a variable, list, dictionary or callback instead of calling it directly"
+  why: "storing a code-running function under another name is a common way to hide what a program does"
+  would: "it could later be called under a harmless-looking name"
+
+- id: obf.aliased_dangerous_literal_call
+  category: obfuscated_execution
+  weight: 0.7
+  tags: [T1027]
+  when:
+    cap: [EXEC_SHELL, EXEC_PROC, EVAL]
+    flags_any: [aliased_import]
+    target_re: '^[^￼]+$'
+  does: "imports a dangerous module under another name and uses it to run a fixed command"
+  why: "renaming os or subprocess has no purpose except to slip past simple pattern checks"
+  would: "the command would run through a name that scanners do not recognise"
+
+- id: obf.pickle_embedded_blob
+  category: obfuscated_execution
+  weight: 0.7
+  tags: [T1620, CWE-502]
+  when:
+    cap: DESERIALIZE
+    flags_all: [literal_blob]
+  does: "loads a serialized object that is written inside the source with a format that runs code while loading"
+  why: "an object blob hidden in the source is how code is smuggled past a reader: pickle executes it on load"
+  would: "the hidden object would run its embedded code as soon as it is loaded"

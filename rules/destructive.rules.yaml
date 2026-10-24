@@ -1,0 +1,429 @@
+# destructive_command - deleting or damaging data or systems, or running attacker-controlled commands
+- id: destructive.delete_root_or_system
+  category: destructive_command
+  weight: 0.96
+  tags: [T1485]
+  when:
+    cap: DELETE
+    pathc_any: [ROOT, SYSTEM_DIR]
+    flags_any: [recursive, force, wildcard, find_delete]
+  unless:
+    flags_any: [interactive, guarded_target]
+  does: "deletes everything under {target}"
+  why: "that location holds the operating system or all of the user data"
+  would: "the machine could be left unbootable and files would be lost for good"
+
+- id: destructive.delete_home_or_userdata
+  category: destructive_command
+  weight: 0.88
+  tags: [T1485]
+  when:
+    cap: DELETE
+    pathc_any: [HOME_DIR, USER_DATA]
+    flags_any: [recursive, wildcard, find_delete]
+  unless:
+    flags_any: [interactive]
+  does: "recursively deletes {target}"
+  why: "that is the user's personal data"
+  would: "documents, settings and projects would be wiped"
+
+- id: destructive.empty_variable_root
+  category: destructive_command
+  weight: 0.92
+  tags: [T1485, CWE-1007]
+  when:
+    cap: DELETE
+    flags_all: [unset_var, recursive]
+    pathc_any: [ROOT, SYSTEM_DIR, WILDCARD]
+  does: "deletes {target} but the folder variable is never set"
+  why: "when a variable like $DIR is empty, the path collapses to the root of the disk"
+  would: "it would try to delete everything starting at /"
+
+- id: destructive.unset_var_path
+  category: destructive_command
+  weight: 0.62
+  tags: [CWE-1007]
+  when:
+    cap: DELETE
+    flags_all: [unset_var, recursive]
+  does: "recursively deletes {target} using a variable that was never set"
+  why: "an empty variable silently changes which folder gets deleted"
+  would: "a different (and much larger) folder than intended could be removed"
+
+- id: destructive.cd_then_wipe
+  category: destructive_command
+  weight: 0.80
+  tags: [T1485, CWE-1007]
+  when:
+    cap: DELETE
+    flags_any: [cwd_unchecked, cd_empty_var]
+    flags_all: [recursive]
+  does: "changes directory and then runs a recursive delete on {target} without checking that the change worked"
+  why: "if the cd fails, the delete runs in whatever folder the script started in"
+  would: "the wrong folder contents could be deleted"
+
+- id: destructive.device_overwrite
+  category: destructive_command
+  weight: 0.96
+  tags: [T1561]
+  when:
+    cap: DELETE
+    flags_any: [device, format, zero_fill]
+  does: "writes over or formats the disk device {target}"
+  why: "this destroys the filesystem on that device"
+  would: "all data on the disk would be lost"
+
+- id: destructive.tainted_recursive_delete
+  category: destructive_command
+  weight: 0.80
+  tags: [T1485, CWE-78]
+  when:
+    cap: DELETE
+    tl_any: [USER, NET]
+    flags_any: [recursive]
+  unless:
+    any:
+      - {tl_any: [VALIDATED, QUOTED]}
+      - {flags_any: [validated]}
+  does: "recursively deletes a path that comes from outside input ({target})"
+  why: "nothing checks the path, so a crafted value like / or ../.. deletes far more than intended"
+  would: "arbitrary folders could be wiped"
+
+- id: destructive.tainted_delete
+  category: destructive_command
+  weight: 0.35
+  tags: [T1485]
+  when:
+    cap: DELETE
+    tl_any: [USER]
+  unless:
+    any:
+      - {tl_any: [VALIDATED, QUOTED]}
+      - {flags_any: [validated]}
+  does: "deletes a file chosen by outside input"
+  why: "an unchecked path can point at the wrong file"
+  would: "any file the program may touch could be removed"
+
+- id: destructive.mass_delete
+  category: destructive_command
+  weight: 0.75
+  tags: [T1485]
+  when:
+    cap: DELETE
+    flags_any: [mass_prune, mass_delete, auto_approve]
+  does: "removes everything in bulk ({target})"
+  why: "this wipes containers, volumes or cloud resources without asking"
+  would: "all matching resources would be destroyed"
+
+- id: destructive.log_wipe
+  category: destructive_command
+  weight: 0.72
+  tags: [T1070]
+  when:
+    cap: DELETE
+    pathc_any: [LOGS]
+    flags_any: [recursive, wildcard, force, shred, truncate]
+  does: "erases logs or shell history at {target}"
+  why: "removing logs hides what happened on the machine"
+  would: "the audit trail would be destroyed"
+
+- id: destructive.truncate_system_file
+  category: destructive_command
+  weight: 0.75
+  tags: [T1485]
+  when:
+    cap: [WRITE_FILE, DELETE]
+    flags_any: [truncate]
+    pathc_any: [PRIVFILE, SECRET_STORE, ROOT, SYSTEM_DIR]
+  unless:
+    flags_any: [open_write]
+  does: "empties the system file {target}"
+  why: "system files control logins and services"
+  would: "the contents of the file would be erased"
+
+- id: destructive.git_force
+  category: destructive_command
+  weight: 0.50
+  tags: [T1485]
+  when:
+    cap: DELETE
+    flags_any: [git_force_push, git_reset_hard, git_clean]
+  does: "force-rewrites git history or discards local changes ({target})"
+  why: "this can permanently throw away other people's commits or work"
+  would: "history or uncommitted work would be lost"
+
+- id: destructive.shell_injection
+  category: destructive_command
+  weight: 0.82
+  tags: [T1059.004, CWE-78]
+  when:
+    cap: EXEC_SHELL
+    tl_any: [USER, NET]
+  unless:
+    any:
+      - {tl_any: [QUOTED, VALIDATED]}
+      - {flags_any: [aliased_import, dynamic_attr, decoded, validated]}
+  does: "passes outside input into a shell command ({target})"
+  why: "anyone who controls that input can add their own commands (for example {witness})"
+  would: "arbitrary commands would run with the permissions of this program"
+
+- id: destructive.tainted_exec_binary
+  category: destructive_command
+  weight: 0.60
+  tags: [T1059, CWE-78]
+  when:
+    cap: EXEC_PROC
+    flags_any: [argv_tainted]
+  unless:
+    any:
+      - {tl_any: [QUOTED, VALIDATED]}
+      - {flags_any: [aliased_import, dynamic_attr, decoded]}
+  does: "runs a program whose name or command line comes from outside input ({target})"
+  why: "the caller decides what gets executed"
+  would: "any program on the machine could be launched"
+
+- id: destructive.tainted_eval
+  category: destructive_command
+  weight: 0.80
+  tags: [T1059.006, CWE-95]
+  when:
+    cap: EVAL
+    flags_all: [tainted]
+  unless:
+    any:
+      - {flags_any: [compiled, dyncode, aliased_import, dynamic_attr, decoded, built_string]}
+      - {tl_any: [VALIDATED]}
+  does: "evaluates text that comes from outside input as code"
+  why: "whoever supplies the text controls what code runs"
+  would: "arbitrary code would execute inside this program"
+
+- id: destructive.sql_delete_all
+  category: destructive_command
+  weight: 0.80
+  tags: [T1485]
+  when:
+    cap: SQL_STMT
+    flags_all: [kind_delete, no_where]
+  unless:
+    flags_any: [temp_name, limited]
+  does: "runs a DELETE with no WHERE condition"
+  why: "without a filter every row in the table is removed"
+  would: "the whole table would be emptied"
+
+- id: destructive.sql_update_blank_all
+  category: destructive_command
+  weight: 0.85
+  tags: [T1485]
+  when:
+    cap: SQL_STMT
+    flags_all: [kind_update, no_where, set_blank]
+  unless:
+    flags_any: [temp_name]
+  does: "sets every row of a table to zero or empty (UPDATE with no WHERE)"
+  why: "there is no filter, so all records are overwritten"
+  would: "every record would be wiped, corrupting the data"
+
+- id: destructive.sql_update_all
+  category: destructive_command
+  weight: 0.45
+  tags: [T1485]
+  when:
+    cap: SQL_STMT
+    flags_all: [kind_update, no_where]
+  unless:
+    flags_any: [set_blank, temp_name]
+  does: "runs an UPDATE with no WHERE condition"
+  why: "without a filter every row is changed"
+  would: "all records would be modified"
+
+- id: destructive.sql_tautology_where
+  category: destructive_command
+  weight: 0.62
+  tags: [T1485, CWE-1007]
+  when:
+    cap: SQL_STMT
+    flags_any: [tautology_where]
+    flags_none: [kind_select]
+  does: "runs a data-changing statement whose WHERE condition is always true"
+  why: "a condition like x = x or 1 = 1 matches every row, so it behaves like having no filter"
+  would: "all rows would be affected"
+
+- id: destructive.sql_drop
+  category: destructive_command
+  weight: 0.80
+  tags: [T1485]
+  when:
+    cap: SQL_STMT
+    flags_any: [drop_data, truncate]
+  unless:
+    flags_any: [temp_name]
+  does: "drops or truncates a table or database"
+  why: "this permanently removes the stored data"
+  would: "the data in it would be gone"
+
+- id: destructive.sql_drop_other
+  category: destructive_command
+  weight: 0.45
+  tags: [T1485]
+  when:
+    cap: SQL_STMT
+    flags_any: [drop_user, drop_role, drop_view, drop_index, alter_drop]
+  does: "drops an account, view, index or column"
+  why: "removing database objects can break applications"
+  would: "dependent features would stop working"
+
+- id: destructive.sql_injection_mutation
+  category: destructive_command
+  weight: 0.85
+  tags: [T1485, CWE-89]
+  when:
+    cap: SQL_STMT
+    flags_all: [injectable]
+    flags_any: [kind_delete, kind_update, kind_drop, kind_truncate, kind_insert, kind_alter, kind_exec, kind_execute]
+  unless:
+    tl_any: [VALIDATED, QUOTED]
+  does: "builds a data-changing SQL statement by pasting outside input into it"
+  why: "an attacker can change which rows are touched (for example {witness})"
+  would: "every row could be modified or deleted instead of just one"
+
+- id: destructive.sql_os_command
+  category: destructive_command
+  weight: 0.88
+  tags: [T1059]
+  when:
+    cap: SQL_STMT
+    flags_any: [os_command, enable_exec, trigger_exec]
+  does: "makes the database run operating-system commands"
+  why: "that turns the database into a remote shell"
+  would: "commands would run on the database server"
+
+- id: destructive.kill_all
+  category: destructive_command
+  weight: 0.80
+  tags: [T1489]
+  when:
+    cap: KILL
+    flags_any: [all_procs]
+  does: "kills every process on the machine"
+  why: "that stops all services and logs everyone out"
+  would: "the system would crash or hang"
+
+- id: destructive.kill_critical
+  category: destructive_command
+  weight: 0.65
+  tags: [T1489]
+  when:
+    cap: KILL
+    flags_any: [critical_proc]
+  does: "kills a critical system or security process ({target})"
+  why: "stopping these services disables the defences or the remote access of the machine"
+  would: "monitoring or remote access would stop working"
+
+- id: destructive.shutdown
+  category: destructive_command
+  weight: 0.65
+  tags: [T1529]
+  when:
+    cap: SYSTEM_CTL
+    flags_any: [shutdown]
+  does: "shuts down or reboots the machine"
+  why: "this interrupts everything running on it"
+  would: "the system would go offline"
+
+- id: destructive.defense_evasion
+  category: destructive_command
+  weight: 0.62
+  tags: [T1562]
+  when:
+    cap: SYSTEM_CTL
+    flags_any: [defense_evasion, stop_security, firewall_off, selinux_off, history_off]
+  does: "turns off security tooling, the firewall or shell history"
+  why: "attackers disable defences before doing damage"
+  would: "the machine would be left unprotected and unaudited"
+
+- id: destructive.world_writable_recursive
+  category: destructive_command
+  weight: 0.80
+  tags: [T1222]
+  when:
+    cap: PRIV
+    flags_all: [world_writable, recursive]
+  does: "makes {target} world-writable recursively"
+  why: "any user could then modify or replace system files"
+  would: "file protection across the system would be removed"
+
+- id: destructive.forced_recursive_rm
+  category: destructive_command
+  weight: 0.72
+  tags: [T1485]
+  when:
+    cap: DELETE
+    name_re: '^rm$'
+    flags_all: [recursive, force]
+  unless:
+    any:
+      - {target_re: '(^|/)(node_modules|__pycache__|build|dist|\.cache|\.pytest_cache|\.mypy_cache|\.tox|\.venv)/?$'}
+      - {flags_any: [interactive, guarded_target]}
+      - {tl_any: [DECODED]}
+  does: "runs rm -rf on {target}"
+  why: "a forced recursive delete skips every confirmation and cannot be undone"
+  would: "everything under {target} would be erased permanently"
+
+- id: destructive.tar_extract_unchecked
+  category: destructive_command
+  weight: 0.62
+  tags: [CWE-22, T1105]
+  when:
+    cap: WRITE_FILE
+    flags_all: [archive_extract, tar_unchecked]
+  does: "unpacks a tar archive with no filter on the member paths"
+  why: "archive entries can be named ../../something or /etc/something and would be written outside the target folder"
+  would: "a crafted archive could overwrite files anywhere the program is allowed to write"
+
+- id: destructive.shell_true_fixed
+  category: destructive_command
+  weight: 0.6
+  tags: [T1059.004, CWE-78]
+  when:
+    cap: EXEC_SHELL
+    flags_any: [shell_true]
+  unless:
+    any:
+      - {target_re: '^\s*(crontab\s+-l|systemctl\s+(status|is-active|is-enabled|list-\w+)|git\s+(status|log|diff|rev-parse|describe)|uname|whoami|hostname|pwd|date|id|mysqldump|mariadb-dump|pg_dump|mongodump)\b'}
+      - {target_re: '^\s*(ls|cat|echo|pwd|date|whoami|uptime|df|du|ps|grep|wc|head|tail|hostname|uname|id|which|stat|file|sort|uniq|basename|dirname|true|false)(\s+[\w./=:,@%+\-]+)*\s*$'}
+      - {tl_any: [QUOTED, VALIDATED, DECODED]}
+  does: "starts a shell to run `{target}`"
+  why: "going through a shell means quoting mistakes or outside input can turn into extra commands, and a plain argument list would do"
+  would: "the command line would be parsed by the shell, so anything that reaches it is run as a command"
+
+- id: destructive.recursive_delete_fixed_dir
+  category: destructive_command
+  weight: 0.66
+  tags: [T1485]
+  when:
+    cap: DELETE
+    name_re: 'rmtree'
+    target_re: '^(/|[A-Za-z]:[\/])[^{}]+$'
+  unless:
+    any:
+      - {target_re: '(^|/)(node_modules|__pycache__|\.cache|\.pytest_cache|\.mypy_cache|\.tox|\.venv)/?$'}
+      - {tl_any: [VALIDATED]}
+      - {flags_any: [ignore_errors], target_re: '^/tmp/'}
+  does: "recursively deletes the directory {target}"
+  why: "a recursive delete cannot be undone and removes everything under that folder"
+  would: "all files below {target} would be erased"
+
+- id: destructive.delete_system_file
+  category: destructive_command
+  weight: 0.62
+  tags: [T1485, T1070]
+  when:
+    cap: DELETE
+    pathc_any: [SYSTEM_FILE, SYSTEM_SENSITIVE, PRIVFILE, SECRET_STORE]
+  unless:
+    any:
+      - {flags_any: [interactive]}
+      - {tl_any: [VALIDATED]}
+  does: "deletes {target}, a system or credential file"
+  why: "removing files that the operating system or logins depend on can break the machine or erase evidence"
+  would: "{target} would be removed"

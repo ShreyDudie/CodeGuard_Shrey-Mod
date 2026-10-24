@@ -1,0 +1,875 @@
+[
+ {
+  "id": "blind_v4_001",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "bash",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_002",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "go",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_003",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.97,
+   "categories": [
+    "secret_access",
+    "data_exfiltration",
+    "ssrf_network_exfil"
+   ],
+   "code_language": "php",
+   "reason": "",
+   "vulnerable_lines": [
+    22,
+    23
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_004",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_005",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.98,
+   "categories": [
+    "persistence_or_privesc",
+    "obfuscated_execution"
+   ],
+   "code_language": "powershell",
+   "reason": "",
+   "vulnerable_lines": [
+    7,
+    8,
+    9
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_006",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_007",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.91,
+   "categories": [
+    "ai_targeted_instructions"
+   ],
+   "code_language": "dockerfile",
+   "reason": "",
+   "vulnerable_lines": [
+    4,
+    5
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_008",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.98,
+   "categories": [
+    "secret_access",
+    "data_exfiltration",
+    "ssrf_network_exfil"
+   ],
+   "code_language": "ruby",
+   "reason": "",
+   "vulnerable_lines": [
+    12,
+    13,
+    17
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_009",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.94,
+   "categories": [
+    "destructive_command"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    13,
+    14
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_010",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.96,
+   "categories": [
+    "obfuscated_execution",
+    "persistence_or_privesc"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    8,
+    10
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_011",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.92,
+   "categories": [
+    "destructive_command",
+    "obfuscated_execution"
+   ],
+   "code_language": "javascript",
+   "reason": "",
+   "vulnerable_lines": [
+    10
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_012",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.05,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_013",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_014",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.98,
+   "categories": [
+    "secret_access",
+    "data_exfiltration"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    11,
+    13,
+    14
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_015",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "sql",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_016",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.99,
+   "categories": [
+    "resource_exhaustion"
+   ],
+   "code_language": "bash",
+   "reason": "",
+   "vulnerable_lines": [
+    8,
+    9,
+    10,
+    11
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_017",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.02,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_018",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.83,
+   "categories": [
+    "dependency_risk"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    8
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_019",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "javascript",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_020",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.98,
+   "categories": [
+    "persistence_or_privesc"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    13,
+    14,
+    15
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_021",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.96,
+   "categories": [
+    "secret_access",
+    "data_exfiltration",
+    "ssrf_network_exfil"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    8,
+    10
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_022",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_023",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.86,
+   "categories": [
+    "dependency_risk"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    7
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_024",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_025",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_026",
+  "output": {
+   "verdict": "block",
+   "risk_score": 1.0,
+   "categories": [
+    "persistence_or_privesc"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6,
+    7
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_027",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.95,
+   "categories": [
+    "ssrf_network_exfil"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_028",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.9,
+   "categories": [
+    "ai_targeted_instructions"
+   ],
+   "code_language": "javascript",
+   "reason": "",
+   "vulnerable_lines": [
+    2,
+    3,
+    4
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_029",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.88,
+   "categories": [
+    "secret_access"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    4
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_030",
+  "output": {
+   "verdict": "block",
+   "risk_score": 1.0,
+   "categories": [
+    "destructive_command"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    7,
+    8
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_031",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "javascript",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_032",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.94,
+   "categories": [
+    "data_exfiltration"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    8
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_033",
+  "output": {
+   "verdict": "block",
+   "risk_score": 1.0,
+   "categories": [
+    "destructive_command"
+   ],
+   "code_language": "sql",
+   "reason": "",
+   "vulnerable_lines": [
+    1,
+    2,
+    3
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_034",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.79,
+   "categories": [
+    "obfuscated_execution"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6,
+    7
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_035",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.97,
+   "categories": [
+    "persistence_or_privesc",
+    "resource_exhaustion"
+   ],
+   "code_language": "bash",
+   "reason": "",
+   "vulnerable_lines": [
+    3,
+    4
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_036",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_037",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.96,
+   "categories": [
+    "secret_access",
+    "data_exfiltration"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6,
+    7
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_038",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.83,
+   "categories": [
+    "dependency_risk"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_039",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.95,
+   "categories": [
+    "persistence_or_privesc"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5,
+    6
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_040",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_041",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.97,
+   "categories": [
+    "obfuscated_execution"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_042",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.86,
+   "categories": [
+    "ssrf_network_exfil"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_043",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.93,
+   "categories": [
+    "secret_access"
+   ],
+   "code_language": "javascript",
+   "reason": "",
+   "vulnerable_lines": [
+    1
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_044",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.98,
+   "categories": [
+    "secret_access",
+    "data_exfiltration"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6,
+    9
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_045",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.99,
+   "categories": [
+    "resource_exhaustion"
+   ],
+   "code_language": "bash",
+   "reason": "",
+   "vulnerable_lines": [
+    3,
+    4
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_046",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_047",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.95,
+   "categories": [
+    "secret_access",
+    "data_exfiltration"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    6,
+    8,
+    9
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_048",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.77,
+   "categories": [
+    "obfuscated_execution"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_049",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.92,
+   "categories": [
+    "ai_targeted_instructions"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    1,
+    2
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_050",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_051",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.95,
+   "categories": [
+    "secret_access",
+    "data_exfiltration",
+    "ssrf_network_exfil"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5,
+    6
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_052",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.84,
+   "categories": [
+    "dependency_risk"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    4
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_053",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.96,
+   "categories": [
+    "ssrf_network_exfil"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_054",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.86,
+   "categories": [
+    "persistence_or_privesc"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5,
+    6
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_055",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_056",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.97,
+   "categories": [
+    "destructive_command"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_057",
+  "output": {
+   "verdict": "block",
+   "risk_score": 1.0,
+   "categories": [
+    "resource_exhaustion"
+   ],
+   "code_language": "bash",
+   "reason": "",
+   "vulnerable_lines": [
+    3
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_058",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.94,
+   "categories": [
+    "secret_access"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    1
+   ]
+  }
+ },
+ {
+  "id": "blind_v4_059",
+  "output": {
+   "verdict": "allow",
+   "risk_score": 0.0,
+   "categories": [],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": []
+  }
+ },
+ {
+  "id": "blind_v4_060",
+  "output": {
+   "verdict": "block",
+   "risk_score": 0.92,
+   "categories": [
+    "destructive_command"
+   ],
+   "code_language": "python",
+   "reason": "",
+   "vulnerable_lines": [
+    5
+   ]
+  }
+ }
+]

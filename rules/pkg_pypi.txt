@@ -1,0 +1,46 @@
+# Popular PyPI distributions (hand-curated for CodeGuard; used for typosquat distance checks only)
+requests urllib3 numpy pandas scipy matplotlib seaborn scikit-learn sklearn tensorflow torch torchvision torchaudio keras flask django fastapi uvicorn starlette gunicorn
+pydantic sqlalchemy alembic psycopg2 psycopg2-binary psycopg pymysql mysqlclient mysql-connector-python pymongo redis celery kombu boto3 botocore awscli s3transfer
+click rich typer tqdm colorama termcolor tabulate prettytable pyyaml ruamel-yaml toml tomli tomli-w tomlkit jsonschema simplejson ujson orjson msgpack protobuf grpcio grpcio-tools
+pytest pytest-cov pytest-mock pytest-asyncio pytest-xdist tox nox coverage mock nose unittest2 hypothesis faker factory-boy freezegun responses httpretty
+black flake8 pylint mypy isort pycodestyle pyflakes bandit autopep8 yapf ruff pre-commit
+setuptools wheel pip pipenv poetry virtualenv build twine packaging pkg-resources distlib wheel-filename cython cffi pycparser
+cryptography pyopenssl pycryptodome pycryptodomex bcrypt passlib pyjwt python-jose paramiko pynacl certifi chardet charset-normalizer idna six future attrs cattrs
+beautifulsoup4 bs4 lxml html5lib selenium scrapy playwright aiohttp httpx httplib2 websockets websocket-client python-socketio requests-oauthlib oauthlib requests-toolbelt
+jinja2 markupsafe werkzeug itsdangerous mako markdown pygments docutils sphinx mkdocs babel pytz tzlocal python-dateutil dateutil arrow pendulum
+pillow opencv-python opencv-python-headless imageio scikit-image
+numba sympy networkx statsmodels xgboost lightgbm catboost joblib threadpoolctl nltk spacy gensim transformers tokenizers datasets huggingface-hub safetensors accelerate sentencepiece onnx onnxruntime
+openai anthropic langchain langchain-core langchain-community langsmith tiktoken pinecone-client chromadb
+sqlparse sqlmodel peewee tortoise-orm databases asyncpg aiomysql aiosqlite motor elasticsearch opensearch-py kafka-python confluent-kafka pika
+docker kubernetes ansible fabric invoke pexpect psutil watchdog schedule apscheduler python-dotenv dotenv environs decouple python-decouple
+pyserial pyusb pywin32 pyinstaller cx-freeze py2exe
+argparse configparser pathlib typing-extensions typing_extensions importlib-metadata importlib-resources zipp more-itertools toolz cytoolz funcy
+regex pyparsing parso jedi ipython ipykernel jupyter jupyterlab notebook nbformat nbconvert traitlets ipywidgets
+openpyxl xlrd xlwt xlsxwriter pyarrow fastparquet tables h5py netcdf4 zarr dask distributed
+flask-cors flask-sqlalchemy flask-login flask-wtf flask-restful flask-migrate flask-jwt-extended flask-socketio wtforms
+django-rest-framework djangorestframework django-cors-headers django-environ django-extensions django-filter channels daphne
+tornado twisted gevent eventlet greenlet uvloop anyio trio sniffio h11 httpcore
+cachetools diskcache pyfiglet emoji unidecode text-unidecode python-slugify slugify
+pyperclip pyautogui pynput keyboard mouse
+scapy nmap python-nmap shodan
+loguru structlog sentry-sdk prometheus-client opentelemetry-api opentelemetry-sdk statsd
+google-cloud-storage google-cloud-bigquery google-api-python-client google-auth google-auth-oauthlib gspread azure-storage-blob azure-identity azure-core msal
+stripe twilio sendgrid slack-sdk slackclient tweepy discord.py python-telegram-bot pyTelegramBotAPI
+ujson marshmallow cerberus voluptuous schema dataclasses-json
+tenacity retrying backoff ratelimit
+pexpect sh plumbum delegator
+mypy-extensions types-requests types-pyyaml types-setuptools
+wrapt decorator deprecated
+pycurl pysocks pyasn1 rsa ecdsa
+gitpython pygit2 dulwich pre-commit
+reportlab fpdf fpdf2 pypdf pypdf2 pdfminer.six python-docx python-pptx
+qrcode pyzbar pytesseract
+tabulate texttable asciitree
+pyyaml-env-tag ruamel.yaml
+pyfiglet humanize
+ffmpeg-python moviepy pydub librosa soundfile
+shapely geopandas pyproj folium geopy
+bokeh plotly dash altair streamlit gradio panel
+pyspark findspark
+zope.interface zope.event
+python pip setuptools wheel six virtualenv pipenv poetry

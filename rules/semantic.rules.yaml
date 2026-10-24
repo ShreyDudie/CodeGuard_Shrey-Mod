@@ -1,0 +1,90 @@
+# Semantic rules: they describe *kinds of weakness* (provenance + missing control), not specific functions.
+
+# A path built from a fixed base directory plus a caller-supplied part is NOT confined by join/concat (CWE-22).
+- id: secret.path_traversal_read
+  category: secret_access
+  weight: 0.58
+  tags: [CWE-22, T1552.001]
+  when:
+    cap: READ_FILE
+    tl_any: [TRAVERSAL]
+  unless:
+    tl_any: [VALIDATED, QUOTED]
+  does: "reads a file whose path is a fixed folder plus a name supplied by the caller, with no check that it stays inside that folder"
+  why: "a name like ../../etc/passwd (or an absolute path) escapes the folder, so any readable file - including credentials - can be requested"
+  would: "outsiders could download files the program was never meant to expose"
+
+- id: destructive.path_traversal_write
+  category: destructive_command
+  weight: 0.55
+  tags: [CWE-22, T1485]
+  when:
+    cap: WRITE_FILE
+    tl_any: [TRAVERSAL]
+  unless:
+    tl_any: [VALIDATED, QUOTED]
+  does: "writes to a file whose path is a fixed folder plus a name supplied by the caller, with no check that it stays inside that folder"
+  why: "a crafted name can point outside the folder and overwrite other files"
+  would: "arbitrary files could be overwritten or created"
+
+- id: destructive.path_traversal_delete
+  category: destructive_command
+  weight: 0.60
+  tags: [CWE-22, T1485]
+  when:
+    cap: DELETE
+    tl_any: [TRAVERSAL]
+  unless:
+    tl_any: [VALIDATED, QUOTED]
+  does: "deletes a path that is a fixed folder plus a name supplied by the caller, with no check that it stays inside that folder"
+  why: "a crafted name can point outside the folder"
+  would: "files elsewhere on the machine could be deleted"
+
+# An arbitrary local file (chosen by the caller) sent to a destination the caller also chooses is a general-purpose courier.
+- id: exfil.arbitrary_file_to_caller_host
+  category: data_exfiltration
+  weight: 0.60
+  tags: [T1048, T1041]
+  when:
+    cap: NET_SEND
+    pl_any: [ARBITRARY_FILE]
+    hostc_any: [USER, UNKNOWN, SUSPICIOUS, DROPSITE]
+  unless:
+    flags_any: [cloud_upload, validated]
+  does: "reads any local file the caller names and sends it to a server the caller also names"
+  why: "neither the source file nor the destination is restricted, so it can move any readable data off the machine"
+  would: "any file readable by the program could be copied to an outside server"
+
+# A verification switch handed to a call as False: the safety control is simply turned off.
+- id: privesc.auth_verification_disabled
+  category: persistence_or_privesc
+  weight: 0.62
+  tags: [CWE-347, T1556, T1078]
+  when:
+    cap: SEC_DISABLE
+    flags_any: [auth_check_off]
+  does: "turns off signature or credential verification when it decodes an authentication token"
+  why: "without verification anyone can forge a token and be treated as any user, including an administrator"
+  would: "attackers could log in as someone else or gain admin rights with a token they made themselves"
+
+- id: network.transport_verification_disabled
+  category: ssrf_network_exfil
+  weight: 0.30
+  tags: [CWE-295]
+  when:
+    cap: SEC_DISABLE
+    flags_any: [transport_check_off]
+  does: "turns off certificate checking for a network connection"
+  why: "a man-in-the-middle could then read or change the traffic"
+  would: "traffic could be intercepted"
+
+- id: privesc.auth_claim_check_disabled
+  category: persistence_or_privesc
+  weight: 0.40
+  tags: [CWE-613]
+  when:
+    cap: SEC_DISABLE
+    flags_any: [auth_claim_off]
+  does: "turns off an expiry, audience or issuer check on an authentication token"
+  why: "expired or foreign tokens would be accepted"
+  would: "old or stolen tokens could keep working"

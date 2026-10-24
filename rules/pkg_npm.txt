@@ -1,0 +1,20 @@
+# Popular npm packages (hand-curated for CodeGuard; used for typosquat distance checks only)
+lodash underscore express koa fastify hapi restify body-parser cors helmet morgan cookie-parser express-session passport passport-local jsonwebtoken bcrypt bcryptjs
+react react-dom react-router react-router-dom redux react-redux redux-thunk next gatsby vue vuex vue-router nuxt angular @angular/core svelte preact jquery
+axios node-fetch got superagent request request-promise cross-fetch isomorphic-fetch undici ws socket.io socket.io-client
+moment moment-timezone dayjs date-fns luxon chalk colors kleur picocolors debug winston pino bunyan log4js
+commander yargs minimist inquirer ora prompts meow cac
+webpack webpack-cli webpack-dev-server rollup vite parcel esbuild babel-core @babel/core @babel/preset-env @babel/cli babel-loader css-loader style-loader sass sass-loader postcss autoprefixer tailwindcss
+typescript ts-node tslib eslint prettier tslint jest mocha chai sinon karma jasmine ava supertest nyc istanbul cypress puppeteer playwright selenium-webdriver
+uuid nanoid shortid classnames prop-types immutable ramda rxjs async bluebird q promise core-js regenerator-runtime
+fs-extra glob rimraf mkdirp del cross-env dotenv config nconf rc yaml js-yaml xml2js cheerio jsdom marked handlebars ejs pug mustache
+mongoose mongodb mysql mysql2 pg sequelize knex typeorm redis ioredis sqlite3 better-sqlite3 prisma @prisma/client
+nodemon pm2 forever concurrently npm-run-all husky lint-staged lerna nx
+body-parser multer formidable busboy compression serve-static http-proxy http-proxy-middleware
+aws-sdk @aws-sdk/client-s3 firebase firebase-admin @google-cloud/storage @azure/storage-blob stripe twilio nodemailer sendgrid @sendgrid/mail
+semver validator joi yup zod ajv bignumber.js decimal.js mathjs
+three d3 chart.js highcharts leaflet
+electron electron-builder
+left-pad is-odd is-even is-number is-array event-stream colors-cli
+opensearch @opensearch-project/opensearch
+openai @anthropic-ai/sdk langchain

@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+.env
+# large optional model that is not used by default (see README "Optional trained models"); train again with train_and_export.py
+models/codeguard_model.onnx
+models/codeguard_model.int8.onnx
+reports/serve_test.log
+reports/train_onnx.log
+reports/sample.pdf
+reports/sample_in.jsonl
+reports/sample_out.*
+# test data that contains fake credentials (placeholder tokens that look real to secret scanners); kept local, see README "Test data"
+data/dev.jsonl
+codeguard_dev.jsonl
+tests/data/user_test50.jsonl
+tests/data/blind_hidden25_code_only.json
+tests/data/blind3_code_only.json
+tests/data/blind4_code_only.json
+tests/data/blind5_code_only.json
+tests/data/blind6_code_only.json
+tests/data/user_test50_v2.jsonl

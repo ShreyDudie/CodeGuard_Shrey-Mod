@@ -1,0 +1,270 @@
+# persistence_or_privesc - persisting (startup scripts, cron, services) or gaining elevated privileges
+- id: persist.write_autostart_suspicious
+  category: persistence_or_privesc
+  weight: 0.93
+  tags: [T1053, T1543, T1546]
+  when:
+    cap: WRITE_FILE
+    pathc_any: [PERSIST]
+    content_re: '(curl|wget|nc\s|ncat|bash\s+-i|/dev/tcp|base64|nohup|python\d?\s+-c|perl\s+-e|\.sh\b|/tmp/|eval|exec|ExecStart|@reboot|\*\s+\*\s+\*|chmod\s+\+x|sudo|ssh-rsa|ssh-ed25519)'
+  unless:
+    flags_any: [open_write]
+  does: "writes a command into the startup location {target}"
+  why: "anything placed there runs automatically at boot or login, which is how malware survives restarts"
+  would: "the command would run again every time the system or the user starts up"
+
+- id: persist.write_autostart_unknown
+  category: persistence_or_privesc
+  weight: 0.72
+  tags: [T1053, T1543]
+  when:
+    cap: WRITE_FILE
+    pathc_any: [PERSIST]
+    content_empty: true
+  unless:
+    flags_any: [touch, rename_dst, open_write]
+  does: "writes to the startup or scheduling location {target}"
+  why: "files in that location run automatically without the user doing anything"
+  would: "something would be set up to run on its own later"
+
+- id: persist.service_or_cron_file
+  category: persistence_or_privesc
+  weight: 0.90
+  tags: [T1543.002, T1053.003]
+  when:
+    cap: WRITE_FILE
+    target_re: '(systemd/system|systemd/user|init\.d/|cron\.d/|cron\.(daily|hourly|weekly|monthly)/|/etc/crontab|spool/cron|rc\.local|LaunchAgents|LaunchDaemons|authorized_keys|StartupItems|autostart/|Startup/|ld\.so\.preload)'
+  unless:
+    flags_any: [open_write, touch]
+  does: "creates or edits the service or scheduler entry {target}"
+  why: "services and scheduled jobs start by themselves and keep running"
+  would: "the program would be started automatically in the background"
+
+- id: persist.shell_rc_benign_looking
+  category: persistence_or_privesc
+  weight: 0.30
+  tags: [T1546.004]
+  when:
+    cap: WRITE_FILE
+    pathc_any: [PERSIST]
+    content_re: '^\s*(export\s+\w+=|alias\s+|source\s+|\.\s+|PATH=|set\s+)'
+  does: "adds a setting to the shell startup file {target}"
+  why: "startup files can be used to run code at login"
+  would: "the setting would load in every new shell"
+
+- id: persist.crontab_install
+  category: persistence_or_privesc
+  weight: 0.90
+  tags: [T1053.003]
+  when:
+    cap: PERSIST
+    flags_any: [crontab_install]
+  does: "installs a new scheduled (cron) job"
+  why: "cron jobs run on a timer without anyone starting them"
+  would: "the job would run repeatedly in the background"
+
+- id: persist.scheduled
+  category: persistence_or_privesc
+  weight: 0.80
+  tags: [T1053, T1547, T1543]
+  when:
+    cap: PERSIST
+    flags_any: [at_job, launchd, scheduled_task, registry_run, service_create, ld_preload, symlink, init_enable]
+  does: "registers something to start automatically ({target})"
+  why: "automatic startup entries are the standard way for malware to survive reboots"
+  would: "it would run again after every restart"
+
+- id: persist.systemd_enable
+  category: persistence_or_privesc
+  weight: 0.45
+  tags: [T1543.002]
+  when:
+    cap: PERSIST
+    flags_any: [systemd_enable]
+  does: "enables the service {target} at boot"
+  why: "enabled services start by themselves"
+  would: "the service would start on every boot"
+
+- id: persist.authorized_keys
+  category: persistence_or_privesc
+  weight: 0.55
+  tags: [T1098.004]
+  when:
+    cap: PERSIST
+    flags_any: [authorized_keys, credential_store]
+  does: "installs an SSH key or stores credentials for later access"
+  why: "that gives lasting remote access"
+  would: "someone could log in again later without a password"
+
+- id: privesc.sudoers_write
+  category: persistence_or_privesc
+  weight: 0.95
+  tags: [T1548.003]
+  when:
+    cap: WRITE_FILE
+    target_re: '^/etc/(sudoers(\.d/[^/]+)?|doas\.conf|passwd|shadow|group|gshadow)$'
+  unless:
+    flags_any: [open_write, truncate]
+  does: "edits {target}, the file that controls who may become administrator"
+  why: "adding a line like NOPASSWD:ALL lets a user take over the machine"
+  would: "that account would get full administrator rights without a password"
+
+- id: privesc.sudoers_open
+  category: persistence_or_privesc
+  weight: 0.93
+  tags: [T1548.003]
+  when:
+    cap: WRITE_FILE
+    target_re: '^/etc/(sudoers(\.d/[^/]+)?|doas\.conf|passwd|shadow)$'
+    flags_all: [open_write, append]
+  does: "opens {target} to append new permissions"
+  why: "that file decides who gets administrator rights"
+  would: "extra privileges would be granted"
+
+- id: privesc.nopasswd_content
+  category: persistence_or_privesc
+  weight: 0.95
+  tags: [T1548.003]
+  when:
+    cap: WRITE_FILE
+    content_re: 'NOPASSWD|ALL\s*=\s*\(ALL(:ALL)?\)'
+  does: "writes a passwordless-sudo rule to {target}"
+  why: "that rule removes the password check for administrator commands"
+  would: "the named user could run anything as root without a password"
+
+- id: privesc.setuid
+  category: persistence_or_privesc
+  weight: 0.88
+  tags: [T1548.001]
+  when:
+    cap: PRIV
+    flags_any: [setuid, capability]
+  unless:
+    flags_any: [chown]
+  does: "sets the setuid bit or special capabilities on {target}"
+  why: "a setuid program always runs as its owner (often root), so it is a classic way to escalate"
+  would: "any user running it would get elevated rights"
+
+- id: privesc.container_escape
+  category: persistence_or_privesc
+  weight: 0.85
+  tags: [T1611]
+  when:
+    cap: PRIV
+    flags_any: [container_escape, cluster_admin]
+  does: "starts a container with host-level access ({target})"
+  why: "privileged containers, host mounts and the docker socket let code break out to the host"
+  would: "the container could take over the host machine"
+
+- id: privesc.add_admin
+  category: persistence_or_privesc
+  weight: 0.92
+  tags: [T1136, T1098]
+  when:
+    cap: PRIV
+    flags_any: [uid0, admin_group]
+  does: "creates or changes a user to have administrator rights"
+  why: "a hidden admin account is a backdoor"
+  would: "that user would have full control of the system"
+
+- id: privesc.user_account
+  category: persistence_or_privesc
+  weight: 0.45
+  tags: [T1136]
+  when:
+    cap: PRIV
+    flags_any: [useradd, usermod, passwd_change, sudoers_edit, shell_change]
+  unless:
+    flags_any: [uid0, admin_group]
+  does: "creates or modifies a user account"
+  why: "new accounts can be used for later access"
+  would: "an extra login would exist on the machine"
+
+- id: privesc.world_writable_sensitive
+  category: persistence_or_privesc
+  weight: 0.55
+  tags: [T1222]
+  when:
+    cap: PRIV
+    flags_all: [world_writable]
+    pathc_any: [PRIVFILE, SECRET_STORE, PERSIST]
+  does: "makes the sensitive file {target} writable by everyone"
+  why: "anyone could then edit it"
+  would: "any user could change system or credential files"
+
+- id: privesc.setuid_zero
+  category: persistence_or_privesc
+  weight: 0.70
+  tags: [T1548]
+  when:
+    cap: PRIV
+    name_re: 'os\.set(re|res|e)?uid'
+    target_re: '^0$'
+  does: "switches the process to user id 0 (root)"
+  why: "running as root removes all permission checks"
+  would: "the program would act with full system rights"
+
+- id: privesc.sql_grant
+  category: persistence_or_privesc
+  weight: 0.80
+  tags: [T1098]
+  when:
+    cap: SQL_STMT
+    flags_any: [grant_all, grant_global, grant_admin, grant_public]
+  does: "grants wide database privileges"
+  why: "ALL PRIVILEGES, global grants or grants to everyone let any user control the database"
+  would: "an account would be able to read, change or delete everything"
+
+- id: privesc.sql_superuser
+  category: persistence_or_privesc
+  weight: 0.85
+  tags: [T1136, T1098]
+  when:
+    cap: SQL_STMT
+    flags_any: [superuser, native_function, risky_extension]
+  does: "creates a super-user, loads native code or enables a risky database extension"
+  why: "this gives full control over the database server"
+  would: "the account or extension could run code on the server"
+
+- id: privesc.sql_user
+  category: persistence_or_privesc
+  weight: 0.60
+  tags: [T1136]
+  when:
+    cap: SQL_STMT
+    flags_all: [hardcoded_password, any_host]
+  does: "creates a database user that can log in from any host with a password written in the script"
+  why: "a remotely reachable account with a known password is easy to abuse"
+  would: "anyone who knows that password could connect"
+
+- id: privesc.sql_alter_role
+  category: persistence_or_privesc
+  weight: 0.50
+  tags: [T1098]
+  when:
+    cap: SQL_STMT
+    flags_any: [alter_role, alter_system]
+  does: "changes a database role or system setting"
+  why: "role changes can quietly raise privileges"
+  would: "account permissions would change"
+
+- id: privesc.su_switch
+  category: persistence_or_privesc
+  weight: 0.55
+  tags: [T1548.003, T1078]
+  when: {cap: PRIV, flags_any: [su_switch]}
+  does: "switches to another user account with su"
+  why: "a program that changes into root or another user is acting with privileges it was not started with"
+  would: "the following commands would run with the other account's rights"
+
+- id: persist.startup_path_hijack
+  category: persistence_or_privesc
+  weight: 0.80
+  tags: [T1574.007, T1546.004]
+  when:
+    cap: WRITE_FILE
+    pathc_any: [PERSIST]
+    content_re: '(\bPATH\s*=\s*["'']?(?:/tmp|/var/tmp|/dev/shm|\.|~/\.|\$HOME/\.|[^:\s"'']*/(?:tmp|Downloads|\.cache))(?:/[^:\s"'']*)?:|\bLD_PRELOAD\s*=|\balias\s+(?:sudo|su|ssh|passwd|login)\s*=)'
+  does: "changes how every new shell finds programs ({target}) so that a writable folder or replaced command is used first"
+  why: "whatever is placed in that folder would run in place of the real command every time the user types it"
+  would: "a planted program could take over everyday commands such as sudo or ls"

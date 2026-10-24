@@ -1,0 +1,165 @@
+# ssrf_network_exfil - reaching unexpected or internal network addresses
+- id: ssrf.metadata
+  category: ssrf_network_exfil
+  weight: 0.93
+  tags: [T1552.005, CWE-918]
+  when:
+    cap: [NET_FETCH, NET_SEND, NET_CONNECT, DNS]
+    hostc_any: [META]
+  does: "contacts {host}"
+  why: "that internal address hands out the server's cloud credentials to any code running on it"
+  would: "temporary cloud access keys could be read and then abused"
+
+- id: ssrf.link_local
+  category: ssrf_network_exfil
+  weight: 0.85
+  tags: [CWE-918]
+  when:
+    cap: [NET_FETCH, NET_SEND, NET_CONNECT]
+    hostc_any: [LINKLOCAL]
+  does: "connects to {host}"
+  why: "link-local addresses are used for cloud metadata and other internal services"
+  would: "internal service data could be read"
+
+- id: ssrf.private_network
+  category: ssrf_network_exfil
+  weight: 0.7
+  tags: [CWE-918]
+  when:
+    cap: [NET_FETCH, NET_SEND, NET_CONNECT]
+    hostc_any: [PRIVATE]
+  unless:
+    flags_any: [cloud_upload]
+  does: "connects to {host}"
+  why: "internal hosts are not meant to be reached from this code path"
+  would: "internal services could be probed or read"
+
+- id: ssrf.internal_name
+  category: ssrf_network_exfil
+  weight: 0.50
+  tags: [CWE-918]
+  when:
+    cap: [NET_FETCH, NET_SEND]
+    hostc_any: [INTERNAL]
+  unless:
+    flags_any: [cloud_upload]
+  does: "connects to {host}"
+  why: "internal-only names point to services behind the firewall"
+  would: "internal services could be reached"
+
+- id: ssrf.loopback_const
+  category: ssrf_network_exfil
+  weight: 0.68
+  tags: [CWE-918]
+  when:
+    cap: [NET_FETCH, NET_SEND]
+    hostc_any: [LOOPBACK]
+  does: "connects to {host}"
+  why: "requests to localhost can reach services that trust local callers"
+  would: "local-only services could be accessed"
+
+- id: ssrf.dangerous_scheme
+  category: ssrf_network_exfil
+  weight: 0.92
+  tags: [CWE-918, T1090]
+  when:
+    cap: [NET_FETCH, NET_SEND]
+    flags_any: [dangerous_scheme]
+  does: "uses a special protocol (gopher, file, dict, ...) in the URL {target}"
+  why: "these protocols let a web request talk raw to internal services such as Redis or read local files"
+  would: "commands could be injected into internal services or local files read"
+
+- id: ssrf.user_controlled_url_named
+  category: ssrf_network_exfil
+  weight: 0.62
+  tags: [CWE-918]
+  when:
+    cap: NET_FETCH
+    flags_any: [user_url]
+    src_re: "parameter '\\w*(url|uri|link|href|image|avatar|webhook|callback|redirect|target|address|host|site|page)\\w*'"
+  unless:
+    any:
+      - {flags_any: [validated, cloud_upload]}
+      - {tl_any: [VALIDATED, QUOTED]}
+  does: "fetches a URL that is chosen by outside input without checking it"
+  why: "the caller can point it at internal addresses such as the cloud metadata service"
+  would: "internal systems could be read through this program"
+
+- id: ssrf.user_controlled_url
+  category: ssrf_network_exfil
+  weight: 0.45
+  tags: [CWE-918]
+  when:
+    cap: NET_FETCH
+    flags_any: [user_url]
+  unless:
+    any:
+      - {flags_any: [validated, cloud_upload]}
+      - {tl_any: [VALIDATED, QUOTED]}
+  does: "fetches a URL that is chosen by outside input without checking it"
+  why: "the caller can point it at internal addresses such as the cloud metadata service"
+  would: "internal systems could be read through this program"
+
+- id: ssrf.reverse_shell
+  category: ssrf_network_exfil
+  weight: 0.97
+  tags: [T1059, T1095]
+  when:
+    cap: REVERSE_SHELL
+  does: "opens an interactive shell connection back to {host}"
+  why: "a reverse shell gives a remote person full command-line control"
+  would: "someone at {host} could run commands on this machine"
+
+- id: ssrf.bind_shell
+  category: persistence_or_privesc
+  weight: 0.90
+  tags: [T1059, T1095]
+  when:
+    cap: NET_LISTEN
+    flags_any: [bind_shell]
+  does: "opens a listening port that hands out a shell"
+  why: "anyone who connects gets command-line access"
+  would: "remote users could run commands on this machine"
+
+- id: ssrf.port_scan
+  category: ssrf_network_exfil
+  weight: 0.68
+  tags: [T1046]
+  when:
+    cap: NET_CONNECT
+    flags_any: [scan, port_scan]
+  does: "scans hosts or ports ({target})"
+  why: "scanning maps out which internal services exist"
+  would: "a list of reachable services would be collected"
+
+- id: ssrf.ssh_tunnel
+  category: ssrf_network_exfil
+  weight: 0.78
+  tags: [T1572]
+  when:
+    cap: NET_CONNECT
+    flags_any: [reverse_tunnel]
+  does: "creates a reverse SSH tunnel to {host}"
+  why: "a reverse tunnel exposes internal services to the outside"
+  would: "an outsider could reach this machine's internal network"
+
+- id: ssrf.sql_network
+  category: ssrf_network_exfil
+  weight: 0.55
+  tags: [CWE-918]
+  when:
+    cap: SQL_STMT
+    flags_any: [network_call, foreign_server, attach_db]
+  does: "makes the database reach out to another host or file"
+  why: "database network functions can be abused to contact internal or attacker servers"
+  would: "the database server would make outbound connections"
+
+- id: ssrf.validation_decoy
+  category: ssrf_network_exfil
+  weight: 0.66
+  tags: [CWE-918, CWE-183]
+  when:
+    cap: VALIDATION_BYPASS
+  does: "checks `{target}` against an allowed address but then requests a different address"
+  why: "the check never touches the address that is actually requested, so it protects nothing"
+  would: "the request would go wherever the code points it, whatever the checked value was"

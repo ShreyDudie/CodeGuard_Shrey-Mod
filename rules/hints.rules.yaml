@@ -1,0 +1,81 @@
+# intent hints: suspicious identifiers add a little evidence; they never block on their own (weight < 0.5)
+
+- id: hint.data_exfiltration
+  category: data_exfiltration
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: data_exfiltration}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"
+
+- id: hint.destructive_command
+  category: destructive_command
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: destructive_command}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"
+
+- id: hint.resource_exhaustion
+  category: resource_exhaustion
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: resource_exhaustion}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"
+
+- id: hint.persistence_or_privesc
+  category: persistence_or_privesc
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: persistence_or_privesc}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"
+
+- id: hint.obfuscated_execution
+  category: obfuscated_execution
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: obfuscated_execution}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"
+
+- id: hint.secret_access
+  category: secret_access
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: secret_access}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"
+
+- id: hint.ssrf_network_exfil
+  category: ssrf_network_exfil
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: ssrf_network_exfil}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"
+
+- id: hint.dependency_risk
+  category: dependency_risk
+  weight: 0.30
+  when:
+    cap: NAME_HINT
+    extra_eq: {hint_cat: dependency_risk}
+  does: "is named like something that does this ({target})"
+  why: "function names often reveal what the author intends"
+  would: "the code is likely to behave as its name says"

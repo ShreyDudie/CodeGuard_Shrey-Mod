@@ -1,0 +1,8 @@
+# Not needed to run the service. Only for retraining the models and the optional ONNX classifier.
+scikit-learn
+scipy
+onnx
+onnxruntime
+tokenizers
+transformers
+torch

@@ -1,0 +1,11 @@
+{
+  "lm_py.npz": {
+    "kind": "byte 5-gram LM, stupid back-off",
+    "train_files": 298,
+    "train_bytes": 4320660,
+    "heldout_files": 400,
+    "data_fingerprint": "02651424d99acdfe",
+    "size_kb": 1159.3,
+    "source": "Python standard library (PSF)"
+  }
+}

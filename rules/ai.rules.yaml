@@ -1,0 +1,12 @@
+# ai_targeted_instructions - text aimed at manipulating a downstream AI reader rather than the machine
+- id: ai.instruction_text
+  category: ai_targeted_instructions
+  weight: score
+  tags: [AML.T0054, LLM01]
+  when:
+    cap: TEXT
+    flags_any: [ai_directive]
+    score_gte: 0.45
+  does: "contains text that talks to an AI reviewer and tells it what to do ({target})"
+  why: "hidden instructions try to make an automated reviewer ignore its rules, approve unsafe code or leak data"
+  would: "an AI tool reading this file could be tricked into marking it safe or revealing secrets"
