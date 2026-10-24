@@ -351,3 +351,47 @@ def score(raw, filename: str = "", mode: str = "auto", scan_missing: bool = True
     out["notes"] = notes
     out["log_entries"] = len(log)
     return out
+
+
+def score_predictions(raw, filename: str, predictions: list) -> dict:
+    """Score a list of predictions (the results of scanning a file of snippets, in file order) against an answer key.  Key and predictions are paired by id when both
+    carry ids that agree, otherwise by position (the key is one object per snippet, in the same order as the snippets)."""
+    rows, notes = parse_key(raw, filename)
+    if not rows:
+        return {"error": "no answers found in the key: each entry needs a verdict (allow / block) or a 0/1 label", "notes": notes}
+    preds = [p for p in (predictions or []) if isinstance(p, dict)]
+    info = {"mode": "order", "by_id": 0, "by_code": 0, "by_order": 0, "scanned_now": 0, "unmatched": 0, "log_entries_unused": 0}
+    ids = {}
+    for j, p in enumerate(preds):
+        if p.get("id") is not None:
+            ids.setdefault(str(p["id"]), []).append(j)
+    id_hits = sum(1 for r in rows if r["id"] is not None and r["id"] in ids)
+    use_ids = id_hits >= max(1, len(rows) // 2)
+    pairs: list = []
+    taken: set = set()
+    for i, r in enumerate(rows):
+        j = None
+        how = None
+        if use_ids and r["id"] is not None:
+            for cand in ids.get(r["id"], []):
+                if cand not in taken:
+                    j, how = cand, "id"
+                    break
+        elif not use_ids and i < len(preds):
+            j, how = i, "order"
+        if j is None:
+            pairs.append((r, None, None, None))
+            info["unmatched"] += 1
+        else:
+            taken.add(j)
+            g = preds[j]
+            pairs.append((r, {k: g.get(k) for k in ("verdict", "risk_score", "categories", "code_language", "reason", "vulnerable_lines")}, how, {"code": g.get("code", "")}))
+            info["by_" + how] += 1
+    info["mode"] = "id" if use_ids else "order"
+    if len(rows) != len(preds):
+        notes.append(f"the key has {len(rows)} entries but the file has {len(preds)} snippets" + ("; extra snippets were not scored" if len(preds) > len(rows) else "; entries without a snippet were not scored"))
+    out = metrics(pairs)
+    out["match"] = info
+    out["notes"] = notes
+    out["log_entries"] = len(preds)
+    return out

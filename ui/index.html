@@ -129,7 +129,6 @@
     <button class="tab" id="tabFile">File of snippets</button>
     <button class="tab" id="tabGate">Interception proof</button>
     <button class="tab" id="tabRes">Results</button>
-    <button class="tab" id="tabScore">Score against answer key</button>
   </div>
 
   <div class="panel" id="paneOne">
@@ -145,6 +144,22 @@
   <div class="panel hidden" id="paneFile">
     <div class="drop" id="drop">Drop a file here, or click to choose<br><span class="hint">.jsonl / .json / .txt / .pdf with {"code": "..."} objects (one after another is fine), .csv with a "code" column, or any code file</span></div>
     <input type="file" id="file" class="hidden">
+    <details id="scoreBox" style="margin-top:14px">
+      <summary style="cursor:pointer"><b>Score against an answer key (optional)</b> <span class="hint">&mdash; compare the system's answers with the expected outputs and get accuracy, precision, recall and more straight away</span></summary>
+      <p class="hint" style="margin:8px 0">Answer key: one expected output per snippet, <b>in the same order as the snippets</b>, in this format (a JSON list, or one object per line; CSV and PDF also work):<br>
+        <code>{"verdict": "block", "categories": ["obfuscated_execution"], "code_language": "sql"}</code><br>
+        <code>verdict</code> is required (allow / block, or a 0/1 <code>label</code>); <code>categories</code>, <code>code_language</code>, <code>risk_score</code> and <code>vulnerable_lines</code> are scored when present.
+        An <code>id</code> is optional: if the key and the snippets both carry ids that agree they are matched by id, otherwise by position. If you add the key before dropping the snippets file, it is scored automatically after the scan.</p>
+      <textarea id="keyText" spellcheck="false" style="min-height:110px" placeholder='[{"verdict": "block", "categories": ["obfuscated_execution"], "code_language": "sql"}, {"verdict": "allow", "categories": [], "code_language": "python"}]'></textarea>
+      <div class="row"><input type="file" id="keyFile" accept=".json,.jsonl,.txt,.csv,.pdf"><span class="hint" id="keyFileName"></span>
+        <label class="hint">compare the key with <select id="keySource"><option value="file">the file scanned above (matched by position)</option><option value="api">requests the service received over the API (live evaluation)</option></select></label></div>
+      <div id="apiOpts" class="hidden"><p class="hint" style="margin:6px 0">The service remembers the answer it gave to every request (<span id="logInfo">...</span>). Entries are matched by <b>id</b> (if the requests carried one), by <b>code</b> (if the key includes it) or by the <b>order</b> the requests arrived; clear the log just before an evaluation starts.</p>
+        <div class="row" style="margin-top:0"><label class="hint">matching <select id="keyMode"><option value="auto">automatic (id, then code, then order)</option><option value="id">by id only</option><option value="code">by code only</option><option value="order">by order of arrival</option></select></label>
+          <label class="hint"><input type="checkbox" id="scanMissing" checked> scan entries that carry code but were never requested</label>
+          <button id="sampleKey">Try with sample data</button><button id="refreshLog">Refresh count</button><button id="clearLog">Clear request log</button><a class="hint" href="/log/export">download the service's predictions (CSV)</a></div></div>
+      <div class="row"><button class="primary" id="doScore">Compare</button><button id="sampleFile">Try with a sample file</button></div>
+      <div id="scoreOut"></div>
+    </details>
   </div>
 
   <div class="panel hidden" id="paneGate">
@@ -157,20 +172,6 @@
 
   <div class="panel hidden" id="paneRes">
     <div id="resOut"><p class="hint"><span class="spinner"></span>loading results ...</p></div>
-  </div>
-
-  <div class="panel hidden" id="paneScore">
-    <p style="margin:0 0 6px"><b>Compare the service's own answers with your answer key, right here.</b> The service remembers the answer it gave to every request it has handled
-      (<span id="logInfo">...</span>). Submit the expected outputs below and it computes accuracy, precision, recall and the other metrics immediately.</p>
-    <p class="hint" style="margin:0 0 8px">Accepted: JSON (a list, one object per line, or <code>{"id": ...}</code> objects back to back), CSV, or a PDF. Each entry needs the expected <code>verdict</code> (allow / block) or a 0/1
-      <code>label</code>; <code>categories</code>, <code>code_language</code>, <code>risk_score</code> and <code>vulnerable_lines</code> are scored when present. Entries may be nested as <code>{"id": ..., "output": {...}}</code> or <code>expected_output</code>.
-      An entry is matched to its prediction by <b>id</b> (when the request carried an id), by the <b>code</b> (if the key includes it), or by the <b>order</b> the requests arrived (direct API calls only; scans made in this page do not count). Clear the request log just before an evaluation starts.</p>
-    <textarea id="keyText" spellcheck="false" style="min-height:130px" placeholder='[{"id": "a1", "output": {"verdict": "block", "categories": ["secret_access"], "code_language": "python"}}, ...]'></textarea>
-    <div class="row"><input type="file" id="keyFile" accept=".json,.jsonl,.txt,.csv,.pdf"><span class="hint" id="keyFileName"></span>
-      <label class="hint">matching <select id="keyMode"><option value="auto">automatic (id, then code, then order)</option><option value="id">by id only</option><option value="code">by code only</option><option value="order">by order of arrival</option></select></label>
-      <label class="hint"><input type="checkbox" id="scanMissing" checked> scan entries that carry code but were never requested</label></div>
-    <div class="row"><button class="primary" id="doScore">Compare</button><button id="sampleKey">Try with sample data</button><button id="refreshLog">Refresh request count</button><button id="clearLog">Clear request log</button><a class="hint" href="/log/export">download the service's predictions (CSV)</a></div>
-    <div id="scoreOut"></div>
   </div>
 
   <div id="status"></div>
@@ -187,6 +188,7 @@ const EX = {
 };
 const CATS = ['secret_access', 'data_exfiltration', 'destructive_command', 'persistence_or_privesc', 'obfuscated_execution', 'dependency_risk', 'resource_exhaustion', 'ssrf_network_exfil', 'ai_targeted_instructions'];
 let ALL = [];
+let SOURCE_KIND = '';
 let FILTER = { verdict: 'all', cat: null, q: '' };
 let SOURCE = 'results';
 
@@ -196,17 +198,15 @@ function showError(e) {
 function setBusy(msg) { $('#status').innerHTML = '<p class="hint"><span class="spinner"></span>' + esc(msg) + '</p>'; }
 
 function tab(which) {
-  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file'); $('#tabGate').classList.toggle('on', which === 'gate'); $('#tabRes').classList.toggle('on', which === 'res'); $('#tabScore').classList.toggle('on', which === 'score');
-  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file'); $('#paneGate').classList.toggle('hidden', which !== 'gate'); $('#paneRes').classList.toggle('hidden', which !== 'res'); $('#paneScore').classList.toggle('hidden', which !== 'score');
-  $('#status').innerHTML = ''; $('#results').classList.toggle('hidden', which === 'gate' || which === 'res' || which === 'score');
+  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file'); $('#tabGate').classList.toggle('on', which === 'gate'); $('#tabRes').classList.toggle('on', which === 'res'); 
+  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file'); $('#paneGate').classList.toggle('hidden', which !== 'gate'); $('#paneRes').classList.toggle('hidden', which !== 'res'); 
+  $('#status').innerHTML = ''; $('#results').classList.toggle('hidden', which === 'gate' || which === 'res');
   if (which === 'res') { loadResults(); }
-  if (which === 'score') { loadLogInfo(); }
 }
 $('#tabOne').onclick = () => tab('one');
 $('#tabFile').onclick = () => tab('file');
 $('#tabGate').onclick = () => tab('gate');
 $('#tabRes').onclick = () => tab('res');
-$('#tabScore').onclick = () => tab('score');
 
 /* ---------------- interception proof: draw what the guard did, step by step ---------------- */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -403,27 +403,40 @@ function downloadScoreCsv() {
     it.expected.code_language, it.got ? it.got.code_language : '', it.got ? it.got.risk_score : '', it.lines_overlap, (it.flags || []).join('; ')].map(cell).join(','));
   save('codeguard_comparison.csv', 'text/csv', head.join(',') + '\n' + rows.join('\n') + '\n');
 }
+function keyPresent() { return !!(($('#keyFile').files[0]) || $('#keyText').value.trim()); }
+function b64(buf) { let s = ''; const a = new Uint8Array(buf); for (let i = 0; i < a.length; i += 0x8000) { s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); } return btoa(s); }
+function syncSource() { const api = $('#keySource').value === 'api'; $('#apiOpts').classList.toggle('hidden', !api); if (api) { loadLogInfo(); } }
 async function doScore() {
   const btn = $('#doScore'); btn.disabled = true;
   $('#scoreOut').innerHTML = '<p class="hint"><span class="spinner"></span>comparing ...</p>';
   try {
     const file = $('#keyFile').files[0];
-    let body, name = '';
-    if (file) { body = await file.arrayBuffer(); name = file.name; } else { body = $('#keyText').value; if (!body.trim()) { throw new Error('paste the answer key or choose a file first'); } }
-    const r = await fetch('/score?filename=' + encodeURIComponent(name) + '&mode=' + $('#keyMode').value + '&scan_missing=' + ($('#scanMissing').checked ? 1 : 0), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: body });
+    let bytes = null, text = '', name = '';
+    if (file) { bytes = await file.arrayBuffer(); name = file.name; } else { text = $('#keyText').value; if (!text.trim()) { throw new Error('paste the answer key or choose a key file first'); } }
+    let r;
+    if ($('#keySource').value === 'file') {
+      if (SOURCE_KIND !== 'file' || !ALL.length) { throw new Error('scan a snippets file first (drop it in the box above), then compare. The key must list one expected output per snippet, in the same order.'); }
+      const preds = ALL.map((x) => ({ id: x.id, verdict: x.verdict, risk_score: x.risk_score, categories: x.categories, code_language: x.code_language, reason: x.reason, vulnerable_lines: x.vulnerable_lines, code: (x.code || '').slice(0, 200) }));
+      const body = { filename: name, predictions: preds };
+      if (bytes) { body.key_b64 = b64(bytes); } else { body.key_text = text; }
+      r = await fetch('/score_file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    } else {
+      r = await fetch('/score?filename=' + encodeURIComponent(name) + '&mode=' + $('#keyMode').value + '&scan_missing=' + ($('#scanMissing').checked ? 1 : 0), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: bytes || text });
+    }
     if (r.status === 404) { throw new Error('this server is an older version without scoring: restart it with  python -m codeguard serve --port 8000'); }
     renderScore(await r.json());
   } catch (e) { $('#scoreOut').innerHTML = '<div class="err">' + esc(e.message || e) + '</div>'; }
   btn.disabled = false; loadLogInfo();
 }
 $('#doScore').onclick = () => doScore();
+$('#keySource').onchange = syncSource;
 $('#refreshLog').onclick = () => loadLogInfo();
 $('#clearLog').onclick = async () => { if (confirm('Forget all logged requests on the server?')) { await fetch('/log/clear', { method: 'POST' }); loadLogInfo(); } };
 $('#keyFile').onchange = () => { $('#keyFileName').textContent = $('#keyFile').files[0] ? $('#keyFile').files[0].name : ''; };
-if (location.hash === '#score') { tab('score'); }
-async function sampleKey() {
+if (location.hash === '#score') { tab('file'); $('#scoreBox').open = true; }
+function sampleSet() {
   const NL = String.fromCharCode(10);
-  const S = [
+  return [
     ['demo-1', 'def add(a, b):' + NL + '    return a + b' + NL, 'allow', [], 'python'],
     ['demo-2', EX.safe, 'allow', [], 'python'],
     ['demo-3', EX.meta, 'block', ['ssrf_network_exfil'], 'python'],
@@ -431,16 +444,29 @@ async function sampleKey() {
     ['demo-5', 'rm -rf /', 'block', ['destructive_command'], 'bash'],
     ['demo-6', "AWS_KEY = 'AKIAIOSFODNN7QZRTKLM'" + NL + "print('key loaded')" + NL, 'block', ['secret_access'], 'python'],
     ['demo-7', "import requests" + NL + "print(requests.get('https://api.example.com/health').status_code)" + NL, 'allow', [], 'python'],
-    ['demo-8-deliberately-wrong-answer', "print('hello')" + NL, 'block', ['secret_access'], 'python']];
+    ['demo-8-deliberately-wrong-answer', "print('hello')" + NL, 'block', ['secret_access'], 'python']]
+}
+async function sampleKey() {
+  const S = sampleSet();
   $('#scoreOut').innerHTML = '<p class="hint"><span class="spinner"></span>sending 8 sample snippets to /scan ...</p>';
   for (const x of S) { await fetch('/scan?demo=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: x[0], code: x[1] }) }); }
   $('#keyText').value = JSON.stringify(S.map((x) => ({ id: x[0], output: { verdict: x[2], categories: x[3], code_language: x[4] } })), null, 1);
-  $('#keyFile').value = ''; $('#keyFileName').textContent = '';
+  $('#keyFile').value = ''; $('#keyFileName').textContent = ''; $('#keySource').value = 'api'; syncSource();
   $('#scoreOut').innerHTML = '<p class="hint">Sample key filled in (the last entry is deliberately wrong so you can see an error row). Press <b>Compare</b>.</p>';
   loadLogInfo();
 }
 $('#sampleKey').onclick = () => sampleKey();
-if (location.hash === '#score-sample') { tab('score'); sampleKey().then(() => doScore()); }
+async function sampleFile() {
+  const S = sampleSet(), NL = String.fromCharCode(10);
+  tab('file'); $('#scoreBox').open = true;
+  $('#keyFile').value = ''; $('#keyFileName').textContent = ''; $('#keySource').value = 'file'; syncSource();
+  $('#keyText').value = JSON.stringify(S.map((x) => ({ verdict: x[2], categories: x[3], code_language: x[4] })), null, 1);
+  await scanFile(new File([S.map((x) => JSON.stringify({ code: x[1] })).join(NL)], 'sample_snippets.jsonl'));       // scans, then scores at once because a key is present
+}
+$('#sampleFile').onclick = () => sampleFile().catch(showError);
+if (location.hash === '#file-sample') { sampleFile().catch(showError); }
+
+if (location.hash === '#score-sample') { tab('file'); $('#scoreBox').open = true; sampleKey().then(() => doScore()); }
 
 
 function gateStrip(x) {
@@ -462,6 +488,7 @@ async function scanOne() {
   $('#status').innerHTML = '';
   ALL = [Object.assign({ index: 1, code: code }, j)];
   FILTER = { verdict: 'all', cat: null, q: '' };
+  SOURCE_KIND = 'one';
   render(true);
 }
 
@@ -482,7 +509,9 @@ async function scanFile(file) {
   ALL = j.results;
   SOURCE = file.name.replace(/\.[^.]*$/, '');
   FILTER = { verdict: 'all', cat: null, q: '' };
+  SOURCE_KIND = 'file';
   render(false);
+  if (keyPresent()) { $('#scoreBox').open = true; $('#keySource').value = 'file'; syncSource(); doScore(); }          // a key was already supplied: score right away
 }
 
 function ordered(x) {

@@ -202,9 +202,10 @@ The response format fixes nine categories, so SQL injection has no category of i
 The mapping lives in the rules (`rules/exfil.rules.yaml`, `rules/destructive.rules.yaml`) and can be flipped in one place.
 
 ## Scoring against an answer key (portal)
-The browser UI has a **Score against answer key** tab (`/#score`): the service logs every answer it gives (in memory), and a judge can submit the expected outputs (JSON, JSONL, CSV or PDF)
-to get accuracy, precision, recall, F1, false positives / negatives, a confusion matrix, per-category metrics and a snippet-by-snippet comparison immediately. Entries are matched to the service's own
-predictions by id, by code, or by order of arrival. Also available as `POST /score`, with `GET /log/export` and `POST /log/clear`. See `codeguard/scoring.py`, `tests/test_scoring.py` and `workflow.md` (section 3b).
+On the **File of snippets** page of the browser UI, the optional **Score against an answer key** section takes one expected output per snippet, in the same order as the snippets
+(`{"verdict": "block", "categories": ["obfuscated_execution"], "code_language": "sql"}`; JSON list, one object per line, CSV or PDF; ids optional) and immediately shows accuracy, precision, recall, F1,
+false positives / negatives, a confusion matrix, per-category metrics and a snippet-by-snippet comparison. The same section can instead compare the key with the answers the service gave to live
+API requests (matched by id, code or order of arrival). Also available as `POST /score_file`, `POST /score`, `GET /log/export`, `POST /log/clear`. See `codeguard/scoring.py`, `tests/test_scoring.py` and `workflow.md` (section 3b).
 
 ## Test data
 

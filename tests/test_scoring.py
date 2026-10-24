@@ -79,10 +79,23 @@ def main():
     check(out, 4)
     assert out["match"]["scanned_now"] == 4
 
+    # 7b. File page: the key is one flat object per snippet, in the order of the snippets, no ids (the format the portal documents)
+    snippets = [c for _i, c, _v, _k in SNIPPETS]
+    preds = [dict(pipeline.scan(c), id=None) for c in snippets]
+    flat_key = [{"verdict": v, "categories": c, "code_language": "python"} for _i, _code, v, c in SNIPPETS]
+    for text, name in ((json.dumps(flat_key), "key.json"), ("\n".join(json.dumps(x) for x in flat_key), "key.jsonl")):
+        out = scoring.score_predictions(text, name, preds)
+        assert "error" not in out and out["scored"] == 4 and out["match"]["by_order"] == 4 and out["verdict"]["accuracy"] == 1.0, out
+    out = scoring.score_predictions(json.dumps(flat_key[:3]), "key.json", preds)               # key shorter than the file: say so, score what is there
+    assert out["scored"] == 3 and any("key has 3" in n for n in out["notes"]), out["notes"]
+    flat_key[1]["verdict"] = "allow"
+    out = scoring.score_predictions(json.dumps(flat_key), "key.json", preds)
+    assert out["verdict"]["fp"] == 1 and out["verdict"]["accuracy"] == 0.75, out["verdict"]
+
     # 8. nothing usable
     assert "error" in scoring.score("hello", "key.txt")
     predlog.clear()
-    print("scoring ok: id, code, order, csv, labels, wrapped text, scan-on-the-spot, wrong answers")
+    print("scoring ok: id, code, order, csv, labels, wrapped text, scan-on-the-spot, wrong answers, file-page key without ids")
 
 
 if __name__ == "__main__":

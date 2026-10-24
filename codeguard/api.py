@@ -165,6 +165,19 @@ async def score_endpoint(request: Request, filename: str = "", mode: str = "auto
     return JSONResponse(out)
 
 
+@app.post("/score_file")
+async def score_file_endpoint(request: Request):
+    """UI helper: the results of scanning a file of snippets (in file order) + an answer key -> metrics.  Body: {"key_text" | "key_b64", "filename", "predictions": [...]}."""
+    import base64
+    try:
+        body = await request.json()
+        raw = base64.b64decode(body["key_b64"]) if body.get("key_b64") else str(body.get("key_text", ""))
+        out = scoring.score_predictions(raw, body.get("filename", ""), body.get("predictions", []))
+    except Exception as e:
+        out = {"error": f"could not score the key: {type(e).__name__}: {e}"}
+    return JSONResponse(out)
+
+
 @app.get("/log/stats")
 def log_stats():
     return predlog.stats()

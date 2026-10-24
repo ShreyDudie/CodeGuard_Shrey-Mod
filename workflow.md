@@ -69,18 +69,23 @@ It sends probe snippets, validates every response against the fixed schema (also
 | 11 | From a second network | open the public URL on a phone (mobile data) | UI loads and a scan returns |
 
 
-## 3b. Judge-side scoring on the portal (new)
+## 3b. Scoring against an answer key (optional, on the File of snippets page)
 
-The portal has a **Score against answer key** tab (`/#score`). The service remembers the answer it gave to every request it handled (in memory only; `CODEGUARD_LOG=0` switches it off). A judge pastes
-or uploads the expected outputs (JSON, one object per line, CSV or PDF) and presses **Compare**: the page returns accuracy, precision, recall, F1, false positives / negatives, a confusion matrix, per-category
-precision / recall / F1, exact category sets, language accuracy, vulnerable-line overlap and risk-score error, with a snippet-by-snippet table (filter to differences, download as CSV / JSON).
+On the **File of snippets** page, open **Score against an answer key (optional)**. The key is one expected output per snippet, **in the same order as the snippets**, in this format (a JSON list, or one object per line; CSV and PDF also work):
 
-* An entry needs the expected `verdict` (allow / block) or a 0/1 `label`; `categories`, `code_language`, `risk_score`, `vulnerable_lines` are scored when present. Nested shapes (`{"id": .., "output": {..}}`, `expected_output`) work.
-* Matching, automatic: by **id** (if the judge's requests carried an `id`), else by **code** (if the key includes it), else by the **order** the requests arrived (direct API calls only; scans made in the page and the sample button do not count).
-  An entry that carries code but was never requested is scanned on the spot.
-* **Clear the request log right before the evaluation starts** (button on the tab, or `POST /log/clear`); `scripts/endpoint_check.py` and `scripts/public_url.py` do it for you when they finish.
-* `GET /log/export` downloads the service's own predictions as CSV; `POST /score` is the same function as an API (`?mode=auto|id|code|order&scan_missing=1`, raw key as the body).
-* Try it without a key: **Try with sample data** on the tab sends 8 snippets through the real endpoint, fills in a key (one answer deliberately wrong) and compares (`/#score-sample` does all of it automatically).
+```
+{"verdict": "block", "categories": ["obfuscated_execution"], "code_language": "sql"}
+```
+
+`verdict` is required (allow / block, or a 0/1 `label`); `categories`, `code_language`, `risk_score` and `vulnerable_lines` are scored when present; `id` is optional (if key and snippets both carry ids they are matched by id, otherwise by position).
+Drop the snippets file and add the key (before or after the scan: if the key is there first, it is scored automatically right after the scan) and press **Compare**. The page shows accuracy, precision, recall, F1, false positives / negatives, a confusion matrix,
+per-category precision / recall / F1, exact category sets, language accuracy, vulnerable-line overlap and risk-score error, and a snippet-by-snippet table (filter to differences, download CSV / JSON).
+
+**Live evaluation variant** (same section, "compare the key with: requests the service received over the API"): the service remembers every answer it gave over `/scan` (in memory only; `CODEGUARD_LOG=0` switches it off). A key is matched to those answers by **id**
+(if the judge's requests carried one), by **code** (if the key includes it) or by the **order** the requests arrived (direct API calls only; scans made in the page do not count); entries that carry code but were never requested are scanned on the spot.
+**Clear the request log right before an evaluation starts** (button there, or `POST /log/clear`; `scripts/endpoint_check.py` and `scripts/public_url.py` do it when they finish). `POST /score` and `POST /score_file` are the same functions as APIs; `GET /log/export` downloads the service's predictions as CSV.
+
+Try it: **Try with a sample file** (or `/#file-sample`) builds an 8-snippet file, scans it and scores it against a key in this format (one answer deliberately wrong); **Try with sample data** does the live-evaluation variant (`/#score-sample`).
 
 ## 4. What was built (map of the repository)
 
