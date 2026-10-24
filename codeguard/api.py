@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
-from . import __version__, engine, pipeline
+from . import __version__, engine, pipeline, predlog, scoring
 
 app = FastAPI(title="CodeGuard", version=__version__, docs_url="/docs", redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -71,7 +71,7 @@ async def _read_body(request: Request) -> Any:
             return ""
 
 
-def _scan_one(code: str, verbose: bool) -> dict:
+def _scan_one(code: str, verbose: bool, ident=None, source: str = "") -> dict:
     t0 = time.perf_counter()
     try:
         res = pipeline.scan(code, verbose=verbose)
@@ -85,16 +85,18 @@ def _scan_one(code: str, verbose: bool) -> dict:
         _lat.append(dt)
         _counts["scan"] += 1
         _counts[res.get("verdict", "block")] = _counts.get(res.get("verdict", "block"), 0) + 1
+    predlog.record(ident, code, res, source or ("ui" if verbose else "api"), dt)        # kept in memory so the answer key can be scored later
     return res
 
 
 @app.post("/scan")
-async def scan_endpoint(request: Request, verbose: int = 0):
+async def scan_endpoint(request: Request, verbose: int = 0, demo: int = 0):
     body = await _read_body(request)
     code = _extract_code(body)
     if isinstance(body, dict) and "verbose" in body:
         verbose = int(bool(body.get("verbose")))
-    res = _scan_one(code, bool(verbose))
+    ident = body.get("id") if isinstance(body, dict) else None
+    res = _scan_one(code, bool(verbose), ident, "demo" if demo else "")
     return JSONResponse(res)
 
 
@@ -117,7 +119,7 @@ async def batch_endpoint(request: Request, verbose: int = 0):
     out = []
     for it in items:
         code = _extract_code(it)
-        res = _scan_one(code, bool(verbose))
+        res = _scan_one(code, bool(verbose), it.get("id") if isinstance(it, dict) else None)
         if isinstance(it, dict) and it.get("id") is not None:
             res = {"id": it["id"], **res}
         out.append(res)
@@ -133,7 +135,7 @@ async def batch_file_endpoint(request: Request, filename: str = ""):
     items = extract_from_bytes(await request.body(), filename)[:2000]
     results = []
     for i, (ident, code) in enumerate(items, start=1):
-        res = _scan_one(code, True)
+        res = _scan_one(code, True, ident, "ui-file")
         results.append({"index": i, "id": ident, "code": code[:40000], **res})
     blocked = sum(1 for r in results if r["verdict"] == "block")
     return JSONResponse({"count": len(results), "blocked": blocked, "allowed": len(results) - blocked, "results": results})
@@ -150,6 +152,42 @@ def metrics():
         lat = sorted(_lat)
         pct = lambda p: round(lat[min(len(lat) - 1, int(p * (len(lat) - 1)))], 2) if lat else 0.0
         return {"counts": dict(_counts), "latency_ms": {"p50": pct(0.5), "p95": pct(0.95), "p99": pct(0.99), "n": len(lat)}}
+
+
+@app.post("/score")
+async def score_endpoint(request: Request, filename: str = "", mode: str = "auto", scan_missing: int = 1):
+    """Score this service's own predictions against an answer key submitted by the judge (JSON / JSONL / CSV / PDF).  See codeguard/scoring.py."""
+    raw = await request.body()
+    try:
+        out = scoring.score(raw, filename, mode, bool(scan_missing))
+    except Exception as e:                                            # never a 500: say what went wrong
+        return JSONResponse({"error": f"could not score the key: {type(e).__name__}: {e}"}, status_code=200)
+    return JSONResponse(out)
+
+
+@app.get("/log/stats")
+def log_stats():
+    return predlog.stats()
+
+
+@app.post("/log/clear")
+def log_clear():
+    return {"cleared": predlog.clear()}
+
+
+@app.get("/log/export")
+def log_export():
+    """The service's own predictions for every request received, as CSV (no code), in the order they arrived."""
+    import csv
+    import io
+    from fastapi.responses import Response
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["seq", "id", "code_sha256_prefix", "verdict", "risk_score", "categories", "code_language", "vulnerable_lines", "source", "service_ms"])
+    for e in predlog.snapshot():
+        r = e["response"]
+        w.writerow([e["seq"], e["id"] or "", e["hash"], r["verdict"], r["risk_score"], "|".join(r["categories"] or []), r["code_language"], "|".join(str(x) for x in (r["vulnerable_lines"] or [])), e["source"], e["ms"]])
+    return Response(buf.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=codeguard_predictions.csv"})
 
 
 @app.get("/report")

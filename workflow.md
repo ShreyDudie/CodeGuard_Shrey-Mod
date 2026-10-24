@@ -68,6 +68,20 @@ It sends probe snippets, validates every response against the fixed schema (also
 | 10 | Dev sample | `python eval/run_eval.py codeguard_dev.jsonl` | precision 1.0, recall 1.0, 0 FP |
 | 11 | From a second network | open the public URL on a phone (mobile data) | UI loads and a scan returns |
 
+
+## 3b. Judge-side scoring on the portal (new)
+
+The portal has a **Score against answer key** tab (`/#score`). The service remembers the answer it gave to every request it handled (in memory only; `CODEGUARD_LOG=0` switches it off). A judge pastes
+or uploads the expected outputs (JSON, one object per line, CSV or PDF) and presses **Compare**: the page returns accuracy, precision, recall, F1, false positives / negatives, a confusion matrix, per-category
+precision / recall / F1, exact category sets, language accuracy, vulnerable-line overlap and risk-score error, with a snippet-by-snippet table (filter to differences, download as CSV / JSON).
+
+* An entry needs the expected `verdict` (allow / block) or a 0/1 `label`; `categories`, `code_language`, `risk_score`, `vulnerable_lines` are scored when present. Nested shapes (`{"id": .., "output": {..}}`, `expected_output`) work.
+* Matching, automatic: by **id** (if the judge's requests carried an `id`), else by **code** (if the key includes it), else by the **order** the requests arrived (direct API calls only; scans made in the page and the sample button do not count).
+  An entry that carries code but was never requested is scanned on the spot.
+* **Clear the request log right before the evaluation starts** (button on the tab, or `POST /log/clear`); `scripts/endpoint_check.py` and `scripts/public_url.py` do it for you when they finish.
+* `GET /log/export` downloads the service's own predictions as CSV; `POST /score` is the same function as an API (`?mode=auto|id|code|order&scan_missing=1`, raw key as the body).
+* Try it without a key: **Try with sample data** on the tab sends 8 snippets through the real endpoint, fills in a key (one answer deliberately wrong) and compares (`/#score-sample` does all of it automatically).
+
 ## 4. What was built (map of the repository)
 
 ```
@@ -195,6 +209,7 @@ python eval/benchmark.py --compare reports/baseline_v7   # every labelled set vs
 python tests/test_metamorphic.py                # behaviour-preserving rewrites
 python tests/test_pdf_extract.py                # a file of snippets (also after a PDF's line wrapping) gives one result per snippet
 python tests/test_demo_gate.py                  # the UI's interception proof matches the CLI proof
+python tests/test_scoring.py                    # answer-key scoring: by id, code, order; JSON, CSV, labels, wrapped text
 python tests/stdlib_fp.py --models              # false positives on real standard-library code
 python eval/make_test_report.py                 # builds the held-out test set from the blind runs, scores first look vs now, writes reports/test_report.json for the UI
 python eval/code_lr_eval.py                     # does a trained code classifier add anything? (it does not; not shipped)

@@ -102,6 +102,11 @@ def main() -> int:
     if lat:
         lat.sort()
         print(f"round trip: median {lat[len(lat) // 2]:.1f} ms, max {lat[-1]:.1f} ms (includes your network)")
+    try:                                  # the probes above must not sit in the request log ahead of the judge's real requests (order matching on the Score tab)
+        urllib.request.urlopen(urllib.request.Request(base.rstrip("/") + "/log/clear", data=b"", method="POST"), timeout=10).read()
+        print("request log cleared (the probes are not kept)")
+    except Exception:
+        pass
     print("RESULT:", "PASS - every response matched the fixed schema" if not bad else f"FAIL - {bad} problem(s)")
     return 0 if not bad else 1
 

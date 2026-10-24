@@ -111,6 +111,12 @@
   table.rt td.n, table.rt th.n { text-align:right; font-variant-numeric:tabular-nums; }
   .rh { margin:18px 0 4px; font-size:16px; } .rsub { color:var(--mut); font-size:13px; margin:0 0 6px; }
   .twocol { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:760px) { .twocol { grid-template-columns:1fr; } }
+
+  .pill { display:inline-block; padding:1px 9px; border-radius:99px; border:1px solid var(--line); font-size:12px; font-weight:700; color:var(--mut); }
+  .pill.ok { border-color:var(--ok); color:var(--ok); } .pill.bad { border-color:var(--bad); color:var(--bad); }
+  select { font:inherit; background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:5px 8px; }
+  a.hint { text-decoration:underline; cursor:pointer; }
+  #scoreRows { overflow-x:auto; } #scoreRows td code { white-space:normal; word-break:break-word; } #scoreRows table { min-width:900px; }
 </style>
 </head>
 <body>
@@ -123,6 +129,7 @@
     <button class="tab" id="tabFile">File of snippets</button>
     <button class="tab" id="tabGate">Interception proof</button>
     <button class="tab" id="tabRes">Results</button>
+    <button class="tab" id="tabScore">Score against answer key</button>
   </div>
 
   <div class="panel" id="paneOne">
@@ -152,6 +159,20 @@
     <div id="resOut"><p class="hint"><span class="spinner"></span>loading results ...</p></div>
   </div>
 
+  <div class="panel hidden" id="paneScore">
+    <p style="margin:0 0 6px"><b>Compare the service's own answers with your answer key, right here.</b> The service remembers the answer it gave to every request it has handled
+      (<span id="logInfo">...</span>). Submit the expected outputs below and it computes accuracy, precision, recall and the other metrics immediately.</p>
+    <p class="hint" style="margin:0 0 8px">Accepted: JSON (a list, one object per line, or <code>{"id": ...}</code> objects back to back), CSV, or a PDF. Each entry needs the expected <code>verdict</code> (allow / block) or a 0/1
+      <code>label</code>; <code>categories</code>, <code>code_language</code>, <code>risk_score</code> and <code>vulnerable_lines</code> are scored when present. Entries may be nested as <code>{"id": ..., "output": {...}}</code> or <code>expected_output</code>.
+      An entry is matched to its prediction by <b>id</b> (when the request carried an id), by the <b>code</b> (if the key includes it), or by the <b>order</b> the requests arrived (direct API calls only; scans made in this page do not count). Clear the request log just before an evaluation starts.</p>
+    <textarea id="keyText" spellcheck="false" style="min-height:130px" placeholder='[{"id": "a1", "output": {"verdict": "block", "categories": ["secret_access"], "code_language": "python"}}, ...]'></textarea>
+    <div class="row"><input type="file" id="keyFile" accept=".json,.jsonl,.txt,.csv,.pdf"><span class="hint" id="keyFileName"></span>
+      <label class="hint">matching <select id="keyMode"><option value="auto">automatic (id, then code, then order)</option><option value="id">by id only</option><option value="code">by code only</option><option value="order">by order of arrival</option></select></label>
+      <label class="hint"><input type="checkbox" id="scanMissing" checked> scan entries that carry code but were never requested</label></div>
+    <div class="row"><button class="primary" id="doScore">Compare</button><button id="sampleKey">Try with sample data</button><button id="refreshLog">Refresh request count</button><button id="clearLog">Clear request log</button><a class="hint" href="/log/export">download the service's predictions (CSV)</a></div>
+    <div id="scoreOut"></div>
+  </div>
+
   <div id="status"></div>
   <div id="results"></div>
 </main>
@@ -175,15 +196,17 @@ function showError(e) {
 function setBusy(msg) { $('#status').innerHTML = '<p class="hint"><span class="spinner"></span>' + esc(msg) + '</p>'; }
 
 function tab(which) {
-  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file'); $('#tabGate').classList.toggle('on', which === 'gate'); $('#tabRes').classList.toggle('on', which === 'res');
-  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file'); $('#paneGate').classList.toggle('hidden', which !== 'gate'); $('#paneRes').classList.toggle('hidden', which !== 'res');
-  $('#status').innerHTML = ''; $('#results').classList.toggle('hidden', which === 'gate' || which === 'res');
+  $('#tabOne').classList.toggle('on', which === 'one'); $('#tabFile').classList.toggle('on', which === 'file'); $('#tabGate').classList.toggle('on', which === 'gate'); $('#tabRes').classList.toggle('on', which === 'res'); $('#tabScore').classList.toggle('on', which === 'score');
+  $('#paneOne').classList.toggle('hidden', which !== 'one'); $('#paneFile').classList.toggle('hidden', which !== 'file'); $('#paneGate').classList.toggle('hidden', which !== 'gate'); $('#paneRes').classList.toggle('hidden', which !== 'res'); $('#paneScore').classList.toggle('hidden', which !== 'score');
+  $('#status').innerHTML = ''; $('#results').classList.toggle('hidden', which === 'gate' || which === 'res' || which === 'score');
   if (which === 'res') { loadResults(); }
+  if (which === 'score') { loadLogInfo(); }
 }
 $('#tabOne').onclick = () => tab('one');
 $('#tabFile').onclick = () => tab('file');
 $('#tabGate').onclick = () => tab('gate');
 $('#tabRes').onclick = () => tab('res');
+$('#tabScore').onclick = () => tab('score');
 
 /* ---------------- interception proof: draw what the guard did, step by step ---------------- */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -320,6 +343,105 @@ async function loadResults() {
   } catch (err) { box.innerHTML = '<div class="err">' + esc(err.message || err) + '</div>'; }
 }
 if (location.hash === '#results') { tab('res'); }
+
+/* ---------------- judge scoring: submit the answer key, compare with the service's own predictions ---------------- */
+let SCORE = null;
+function fmtTime(t) { return t ? new Date(t * 1000).toLocaleTimeString() : '-'; }
+async function loadLogInfo() {
+  try {
+    const s = await (await fetch('/log/stats')).json();
+    const src = Object.keys(s.by_source || {}).map((k) => k + ': ' + s.by_source[k]).join(', ');
+    $('#logInfo').innerHTML = s.enabled ? '<b>' + s.entries + '</b> request' + (s.entries === 1 ? '' : 's') + ' answered so far' + (s.entries ? ' (' + esc(src) + '; ' + s.with_id + ' with an id; last at ' + fmtTime(s.last_at) + ')' : '') : 'request logging is switched off on this server (CODEGUARD_LOG=0)';
+  } catch (e) { $('#logInfo').textContent = 'log not reachable'; }
+}
+function pill(ok) { return ok === null || ok === undefined ? '<span class="pill">-</span>' : (ok ? '<span class="pill ok">ok</span>' : '<span class="pill bad">differs</span>'); }
+function catsTxt(c) { return c && c.length ? c.map((x) => '<span class="chip" style="margin:0 3px 2px 0">' + esc(x) + '</span>').join('') : '<span class="hint">none</span>'; }
+function renderScore(d) {
+  const box = $('#scoreOut');
+  if (d.error) { box.innerHTML = '<div class="err"><b>Could not score:</b> ' + esc(d.error) + (d.notes && d.notes.length ? '<br>' + esc(d.notes.join('; ')) : '') + '</div>'; return; }
+  SCORE = d;
+  const v = d.verdict, c = d.categories, m = d.match;
+  const pc1 = (x) => (x === null || x === undefined) ? '-' : (100 * x).toFixed(1) + '%';
+  const n3 = (x) => (x === null || x === undefined) ? '-' : x.toFixed(3);
+  let h = '<h3 class="rh">Result: ' + d.scored + ' of ' + d.keyed + ' key entries compared</h3>';
+  const how = [];
+  if (m.by_id) how.push(m.by_id + ' matched by id'); if (m.by_code) how.push(m.by_code + ' by code'); if (m.by_order) how.push(m.by_order + ' by order of arrival'); if (m.scanned_now) how.push(m.scanned_now + ' scanned on the spot (never requested)');
+  h += '<p class="rsub">' + esc(how.join(', ') || 'nothing matched') + (m.unmatched ? '. <b style="color:var(--bad)">' + m.unmatched + ' key entries had no prediction to compare</b> (see the mode options)' : '') +
+    (m.log_entries_unused ? '. ' + m.log_entries_unused + ' logged requests were not in the key' : '') + (d.notes && d.notes.length ? '. ' + esc(d.notes.join('; ')) : '') + '.</p>';
+  h += '<div class="rtiles">' + tile(pc1(v.accuracy), 'accuracy (verdict)', 'acc') + tile(n3(v.precision), 'precision (block)', 'ok') + tile(n3(v.recall), 'recall (block)', 'ok') + tile(n3(v.f1), 'F1 (block)', 'ok') +
+    tile(v.fp + ' (' + pc1(v.false_positive_rate) + ')', 'false positives', v.fp ? 'bad' : 'ok') + tile(v.fn + ' (' + pc1(v.false_negative_rate) + ')', 'false negatives (missed attacks)', v.fn ? 'bad' : 'ok') +
+    tile(pc1(c.exact_set_match), 'category sets exactly right', 'acc') + tile(n3(c.micro_precision) + ' / ' + n3(c.micro_recall), 'category precision / recall (micro)', 'acc') + tile(n3(c.micro_f1) + ' / ' + n3(c.macro_f1), 'category F1 (micro / macro)', 'acc') +
+    tile(pc1(d.language.accuracy), 'language accuracy' + (d.language.scored ? ' (' + d.language.scored + ' scored)' : ''), 'acc') +
+    (d.vulnerable_lines.scored ? tile(n3(d.vulnerable_lines.mean_overlap), 'vulnerable-line overlap (exact ' + pc1(d.vulnerable_lines.exact_match) + ')', 'acc') : '') +
+    (d.risk_score.scored ? tile(n3(d.risk_score.mean_abs_error), 'risk score mean absolute error', 'acc') : '') + '</div>';
+  h += '<div class="twocol"><div><h4 class="rh" style="margin-top:6px">Confusion matrix (verdict)</h4><table class="rt"><tr><th></th><th class="n">predicted block</th><th class="n">predicted allow</th></tr>' +
+    '<tr><td>expected block (' + v.expected_block + ')</td><td class="n" style="color:var(--ok)"><b>' + v.tp + '</b> true positives</td><td class="n" style="color:var(--bad)"><b>' + v.fn + '</b> missed</td></tr>' +
+    '<tr><td>expected allow (' + v.expected_allow + ')</td><td class="n" style="color:var(--bad)"><b>' + v.fp + '</b> false positives</td><td class="n" style="color:var(--ok)"><b>' + v.tn + '</b> true negatives</td></tr></table></div>';
+  const pcrows = Object.keys(c.per_category).map((k) => { const x = c.per_category[k]; return '<tr><td>' + esc(k) + '</td><td class="n">' + x.support + '</td><td class="n">' + x.tp + '</td><td class="n">' + x.fp + '</td><td class="n">' + x.fn + '</td><td class="n">' + n3(x.precision) + '</td><td class="n">' + n3(x.recall) + '</td><td class="n">' + n3(x.f1) + '</td></tr>'; }).join('');
+  h += '<div><h4 class="rh" style="margin-top:6px">Per category</h4><table class="rt"><tr><th>category</th><th class="n">in key</th><th class="n">TP</th><th class="n">FP</th><th class="n">FN</th><th class="n">precision</th><th class="n">recall</th><th class="n">F1</th></tr>' + pcrows + '</table></div></div>';
+  h += '<h4 class="rh">Snippet by snippet</h4><div class="toolbar"><select id="scoreFilter"><option value="all">all entries</option><option value="bad">only differences</option><option value="verdict">only wrong verdicts</option><option value="none">only entries with no prediction</option></select>' +
+    '<button id="dlScore">Download comparison (CSV)</button><button id="dlScoreJson">Download metrics (JSON)</button><span class="hint" id="scoreCount"></span></div><div id="scoreRows"></div>';
+  box.innerHTML = h;
+  $('#scoreFilter').onchange = renderScoreRows; $('#dlScore').onclick = downloadScoreCsv; $('#dlScoreJson').onclick = () => save('codeguard_score.json', 'application/json', JSON.stringify(SCORE, null, 2));
+  renderScoreRows();
+}
+function renderScoreRows() {
+  const f = $('#scoreFilter').value;
+  const rows = SCORE.items.filter((it) => f === 'all' || (f === 'none' && !it.got) || (f === 'verdict' && it.verdict_ok === false) || (f === 'bad' && (it.flags && it.flags.length)));
+  $('#scoreCount').textContent = rows.length + ' of ' + SCORE.items.length + ' shown' + (rows.length > 500 ? ' (first 500; download the CSV for all)' : '');
+  $('#scoreRows').innerHTML = '<table class="rt"><tr><th>#</th><th>id</th><th>expected</th><th>system said</th><th>verdict</th><th>categories</th><th>notes</th><th>code</th></tr>' + rows.slice(0, 500).map((it) => {
+    const e = it.expected, g = it.got;
+    return '<tr><td class="n">' + it.n + '</td><td>' + esc(it.id === null ? '' : it.id) + '</td><td><b class="v-' + e.verdict + '">' + e.verdict + '</b><br>' + catsTxt(e.categories) + '</td>' +
+      (g ? '<td><b class="v-' + g.verdict + '">' + g.verdict + '</b> ' + (g.risk_score !== null && g.risk_score !== undefined ? '<span class="hint">risk ' + g.risk_score + '</span>' : '') + '<br>' + catsTxt(g.categories) + '</td><td>' + pill(it.verdict_ok) + '</td><td>' + pill(it.categories_ok) + '</td>' :
+        '<td class="hint">no prediction</td><td></td><td></td>') + '<td>' + esc((it.flags || []).join('; ')) + (it.matched_by ? '<div class="hint">matched by ' + esc(it.matched_by) + '</div>' : '') + '</td><td><code style="font-size:11.5px">' + esc((it.code || '').replace(/\s+/g, ' ').slice(0, 90)) + '</code></td></tr>';
+  }).join('') + '</table>';
+}
+function downloadScoreCsv() {
+  const cell = (v) => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+  const head = ['n', 'id', 'matched_by', 'expected_verdict', 'predicted_verdict', 'verdict_ok', 'expected_categories', 'predicted_categories', 'categories_ok', 'expected_language', 'predicted_language', 'risk_score', 'lines_overlap', 'flags'];
+  const rows = SCORE.items.map((it) => [it.n, it.id, it.matched_by, it.expected.verdict, it.got ? it.got.verdict : '', it.verdict_ok, (it.expected.categories || []).join('|'), it.got ? (it.got.categories || []).join('|') : '', it.categories_ok,
+    it.expected.code_language, it.got ? it.got.code_language : '', it.got ? it.got.risk_score : '', it.lines_overlap, (it.flags || []).join('; ')].map(cell).join(','));
+  save('codeguard_comparison.csv', 'text/csv', head.join(',') + '\n' + rows.join('\n') + '\n');
+}
+async function doScore() {
+  const btn = $('#doScore'); btn.disabled = true;
+  $('#scoreOut').innerHTML = '<p class="hint"><span class="spinner"></span>comparing ...</p>';
+  try {
+    const file = $('#keyFile').files[0];
+    let body, name = '';
+    if (file) { body = await file.arrayBuffer(); name = file.name; } else { body = $('#keyText').value; if (!body.trim()) { throw new Error('paste the answer key or choose a file first'); } }
+    const r = await fetch('/score?filename=' + encodeURIComponent(name) + '&mode=' + $('#keyMode').value + '&scan_missing=' + ($('#scanMissing').checked ? 1 : 0), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: body });
+    if (r.status === 404) { throw new Error('this server is an older version without scoring: restart it with  python -m codeguard serve --port 8000'); }
+    renderScore(await r.json());
+  } catch (e) { $('#scoreOut').innerHTML = '<div class="err">' + esc(e.message || e) + '</div>'; }
+  btn.disabled = false; loadLogInfo();
+}
+$('#doScore').onclick = () => doScore();
+$('#refreshLog').onclick = () => loadLogInfo();
+$('#clearLog').onclick = async () => { if (confirm('Forget all logged requests on the server?')) { await fetch('/log/clear', { method: 'POST' }); loadLogInfo(); } };
+$('#keyFile').onchange = () => { $('#keyFileName').textContent = $('#keyFile').files[0] ? $('#keyFile').files[0].name : ''; };
+if (location.hash === '#score') { tab('score'); }
+async function sampleKey() {
+  const NL = String.fromCharCode(10);
+  const S = [
+    ['demo-1', 'def add(a, b):' + NL + '    return a + b' + NL, 'allow', [], 'python'],
+    ['demo-2', EX.safe, 'allow', [], 'python'],
+    ['demo-3', EX.meta, 'block', ['ssrf_network_exfil'], 'python'],
+    ['demo-4', EX.ai, 'block', ['ai_targeted_instructions'], 'python'],
+    ['demo-5', 'rm -rf /', 'block', ['destructive_command'], 'bash'],
+    ['demo-6', "AWS_KEY = 'AKIAIOSFODNN7QZRTKLM'" + NL + "print('key loaded')" + NL, 'block', ['secret_access'], 'python'],
+    ['demo-7', "import requests" + NL + "print(requests.get('https://api.example.com/health').status_code)" + NL, 'allow', [], 'python'],
+    ['demo-8-deliberately-wrong-answer', "print('hello')" + NL, 'block', ['secret_access'], 'python']];
+  $('#scoreOut').innerHTML = '<p class="hint"><span class="spinner"></span>sending 8 sample snippets to /scan ...</p>';
+  for (const x of S) { await fetch('/scan?demo=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: x[0], code: x[1] }) }); }
+  $('#keyText').value = JSON.stringify(S.map((x) => ({ id: x[0], output: { verdict: x[2], categories: x[3], code_language: x[4] } })), null, 1);
+  $('#keyFile').value = ''; $('#keyFileName').textContent = '';
+  $('#scoreOut').innerHTML = '<p class="hint">Sample key filled in (the last entry is deliberately wrong so you can see an error row). Press <b>Compare</b>.</p>';
+  loadLogInfo();
+}
+$('#sampleKey').onclick = () => sampleKey();
+if (location.hash === '#score-sample') { tab('score'); sampleKey().then(() => doScore()); }
+
 
 function gateStrip(x) {
   const blocked = x.verdict === 'block';

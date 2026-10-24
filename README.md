@@ -201,6 +201,11 @@ The response format fixes nine categories, so SQL injection has no category of i
 
 The mapping lives in the rules (`rules/exfil.rules.yaml`, `rules/destructive.rules.yaml`) and can be flipped in one place.
 
+## Scoring against an answer key (portal)
+The browser UI has a **Score against answer key** tab (`/#score`): the service logs every answer it gives (in memory), and a judge can submit the expected outputs (JSON, JSONL, CSV or PDF)
+to get accuracy, precision, recall, F1, false positives / negatives, a confusion matrix, per-category metrics and a snippet-by-snippet comparison immediately. Entries are matched to the service's own
+predictions by id, by code, or by order of arrival. Also available as `POST /score`, with `GET /log/export` and `POST /log/clear`. See `codeguard/scoring.py`, `tests/test_scoring.py` and `workflow.md` (section 3b).
+
 ## Test data
 
 The organiser's public dev sample (`codeguard_dev.jsonl`) and several blind-test files are **not committed**: they contain placeholder credentials (fake Slack/API tokens) that GitHub's secret scanning treats as real.
