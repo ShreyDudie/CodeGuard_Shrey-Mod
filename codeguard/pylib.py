@@ -168,6 +168,8 @@ class LibMixin:
         # normalise a few spellings
         if q.startswith("builtins."):
             nm = q.split(".", 1)[1]
+            if nm in ("bytes.fromhex", "bytearray.fromhex"):                 # hex text decoded to bytes: a decoder, like binascii.unhexlify
+                return self.s_decode("bytes.fromhex", callee, args, kws, n, recv)
             h = getattr(self, "b_" + nm, None)
             if h is not None:
                 return h(callee, args, kws, n)

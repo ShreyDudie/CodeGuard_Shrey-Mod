@@ -64,7 +64,7 @@ S("s_b64_arg_ok", "benign", "import base64, subprocess\nname = base64.b64decode(
 _B = "cm0gLXJmIC90bXAvdGFyZ2V0"
 S("s_dec_popen_var", "obfuscated_execution", "import base64,subprocess\nx=base64.b64decode('" + _B + "')\nsubprocess.Popen(x.decode().split())\n")
 S("s_dec_b32", "obfuscated_execution", "import base64,os\nos.system(base64.b32decode('PJXSALJNMYQC65DNPEQHI4ZONZ2W65LHNFXA====').decode())\n")
-S("s_dec_hex", "obfuscated_execution", "import os\nos.system(bytes.fromhex('726d202d7266202f746d702f78').decode())\n")
+S("s_dec_hex", "obfuscated_execution, destructive_command", "import os\nos.system(bytes.fromhex('726d202d7266202f746d702f78').decode())\n")
 S("s_dec_unhexlify", "obfuscated_execution", "import binascii,subprocess\nsubprocess.run(binascii.unhexlify('726d202d7266202f746d702f78').decode().split())\n")
 S("s_dec_zlib", "obfuscated_execution", "import zlib,base64,os\nos.system(zlib.decompress(base64.b64decode('eJwrKtZV1CsqSMwFAAxeApw=')).decode())\n")
 S("s_dec_chain", "obfuscated_execution", "import base64,subprocess\na='" + _B + "'\nb=base64.b64decode(a)\nc=b.decode('utf-8')\nparts=c.split()\nsubprocess.check_output(parts)\n")
